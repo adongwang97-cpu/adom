@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>阿東・寫真日常｜支持者專屬</title>
+<meta name="description" content="阿東的寫真日常，給支持我的你。">
+<meta name="robots" content="noindex">
+<meta property="og:title" content="阿東・寫真日常">
+<meta property="og:description" content="給支持我的你 ♡">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.qrserver.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#2a1030; --bg2:#3a1642; --card:rgba(255,120,200,.07);
+  --pk:#ff4da6; --pk2:#ff86c8; --mg:#e23bb0; --cy:#4fe0ff; --tx:#fff5fb; --mut:#e0b8d6;
+  --line:rgba(255,120,200,.28); --line2:rgba(255,120,200,.5);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC',system-ui,sans-serif;line-height:1.6;overflow-x:hidden}
+.num{font-family:'Orbitron',sans-serif}
+.ic{width:1.1em;height:1.1em;vertical-align:-.16em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic.fill{fill:currentColor;stroke:none}
+/* bg glow (bright pink, not too dark) */
+body::before{content:"";position:fixed;inset:0;z-index:-2;background:
+  radial-gradient(60% 45% at 50% -6%, rgba(255,77,166,.5), transparent 62%),
+  radial-gradient(50% 40% at 100% 18%, rgba(226,59,176,.4), transparent 66%),
+  radial-gradient(55% 45% at 0% 70%, rgba(79,224,255,.22), transparent 66%),
+  linear-gradient(180deg,#3a1642,#2a1030)}
+body::after{content:"";position:fixed;inset:-2px;z-index:-1;opacity:.4;
+  background-image:linear-gradient(rgba(255,120,200,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,120,200,.06) 1px,transparent 1px);
+  background-size:44px 44px;animation:grid 24s linear infinite}
+@keyframes grid{to{background-position:0 -440px,-440px 0}}
+.wrap{max-width:960px;margin:0 auto;position:relative;padding-bottom:40px}
+/* topbar */
+.top{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;position:sticky;top:0;z-index:30;
+  background:linear-gradient(180deg,rgba(42,16,48,.9),rgba(42,16,48,.4) 70%,transparent);backdrop-filter:blur(8px)}
+.logo{font-family:'Orbitron';font-weight:900;font-size:20px;letter-spacing:1px}
+.logo b{background:linear-gradient(90deg,var(--pk),var(--pk2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.donate-sm{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:#3a0022;
+  background:linear-gradient(90deg,var(--mg),var(--pk),var(--pk2));border:none;border-radius:22px;padding:9px 16px;cursor:pointer;
+  box-shadow:0 0 18px rgba(255,77,166,.5)}
+.donate-sm:active{transform:scale(.96)}
+/* hero */
+.hero{text-align:center;padding:26px 20px 10px}
+.ava{width:118px;height:118px;border-radius:50%;margin:0 auto 14px;object-fit:cover;border:3px solid var(--pk);
+  box-shadow:0 0 34px rgba(255,77,166,.6);background:linear-gradient(145deg,#4a1e52,#2a1030);display:block}
+.hname{font-size:30px;font-weight:900;letter-spacing:1px}
+.hname .g{background:linear-gradient(90deg,var(--pk2),#fff,var(--pk2));background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 3.5s linear infinite}
+@keyframes shine{to{background-position:200% center}}
+.htag{color:var(--mut);font-size:14.5px;margin-top:8px;font-weight:500}
+.hchips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.chip{font-size:12px;font-weight:700;color:var(--pk2);border:1px solid var(--line2);border-radius:20px;padding:5px 13px;background:rgba(255,120,200,.08)}
+.donate-big{display:inline-flex;align-items:center;justify-content:center;gap:9px;margin-top:20px;
+  font-size:17px;font-weight:900;color:#3a0022;background:linear-gradient(90deg,var(--mg),var(--pk),var(--pk2));
+  border:none;border-radius:16px;padding:16px 30px;cursor:pointer;box-shadow:0 8px 30px rgba(255,77,166,.45);animation:pulse 2.2s infinite}
+.donate-big:active{transform:scale(.97)}
+@keyframes pulse{50%{box-shadow:0 8px 42px rgba(255,77,166,.75)}}
+/* promo (代理+預測站) */
+.promo{margin:18px 20px 4px;background:linear-gradient(160deg,rgba(255,77,166,.14),rgba(79,224,255,.08));border:1px solid var(--line2);border-radius:18px;padding:18px 16px;text-align:center;box-shadow:0 0 30px rgba(255,77,166,.22)}
+.promo-t{font-weight:900;font-size:16.5px;margin-bottom:4px}
+.promo-t .g{background:linear-gradient(90deg,var(--pk2),var(--cy));-webkit-background-clip:text;background-clip:text;color:transparent}
+.promo-s{color:var(--mut);font-size:12.5px;margin-bottom:14px}
+.promo-btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;text-decoration:none;font-weight:900;font-size:16px;border-radius:14px;padding:15px;margin-bottom:10px;color:#3a0022;transition:transform .12s}
+.promo-btn:last-child{margin-bottom:0}
+.promo-btn:active{transform:scale(.97)}
+.promo-btn.agent{background:linear-gradient(90deg,#ffb14d,#ff6ea9);box-shadow:0 6px 22px rgba(255,150,80,.35)}
+.promo-btn.pred{background:linear-gradient(90deg,var(--cy),var(--pk));box-shadow:0 6px 22px rgba(79,224,255,.3)}
+.promo-btn .arw{animation:bounce 1.3s ease-in-out infinite}
+@keyframes bounce{50%{transform:translateX(5px)}}
+/* gallery */
+.gwrap{padding:24px 16px 10px}
+.gtitle{text-align:center;font-size:20px;font-weight:900;margin-bottom:4px}
+.gtitle .g{color:var(--pk2)}
+.gsub{text-align:center;color:var(--mut);font-size:13px;margin-bottom:20px}
+.grid{column-count:2;column-gap:12px}
+@media(min-width:640px){.grid{column-count:3}}
+@media(min-width:900px){.grid{column-count:4}}
+.gitem{break-inside:avoid;margin-bottom:12px;border-radius:14px;overflow:hidden;position:relative;cursor:pointer;
+  border:1px solid var(--line);background:var(--card);display:block}
+.gitem img{width:100%;display:block;transition:transform .4s}
+.gitem:hover img{transform:scale(1.05)}
+.gitem::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(226,59,176,.25));opacity:0;transition:opacity .3s}
+.gitem:hover::after{opacity:1}
+.gempty{text-align:center;color:var(--mut);padding:50px 20px;border:1px dashed var(--line2);border-radius:16px;font-size:14px}
+/* lightbox */
+.lb{position:fixed;inset:0;z-index:80;background:rgba(20,6,26,.94);display:none;align-items:center;justify-content:center;padding:20px}
+.lb.on{display:flex}
+.lb img{max-width:100%;max-height:86vh;border-radius:12px;box-shadow:0 0 50px rgba(255,77,166,.4)}
+.lb .x{position:absolute;top:16px;right:18px;width:42px;height:42px;border-radius:50%;background:rgba(255,120,200,.15);border:1px solid var(--line2);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.lb .nav{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;background:rgba(255,120,200,.15);border:1px solid var(--line2);color:#fff;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.lb .prev{left:14px}.lb .next{right:14px}
+/* donate modal */
+.modal{position:fixed;inset:0;z-index:90;background:rgba(14,4,18,.96);display:none;align-items:center;justify-content:center;padding:20px}
+.modal.on{display:flex;animation:fade .25s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.mbox{max-width:400px;width:100%;background:#2e1236;border:1px solid var(--line2);border-radius:20px;padding:26px 22px;text-align:center;position:relative;box-shadow:0 0 60px rgba(255,77,166,.4)}
+.mbox .x{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--mut);font-size:24px;cursor:pointer}
+.mbox h3{font-size:20px;font-weight:900}
+.mbox .heart{color:var(--pk);font-size:26px}
+.mbox p{color:var(--mut);font-size:13px;margin:8px 0 16px}
+.qr{width:196px;height:196px;border-radius:14px;margin:0 auto 14px;background:#fff;padding:10px;display:block}
+.netlab{font-size:12px;font-weight:800;color:var(--cy);margin-bottom:6px}
+.addr{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
+.addr code{font-family:'Orbitron',monospace;font-size:11.5px;color:var(--pk2);word-break:break-all;text-align:left;flex:1;user-select:all}
+.copy{flex:none;background:linear-gradient(90deg,var(--mg),var(--pk));border:none;color:#3a0022;font-weight:800;border-radius:9px;padding:8px 12px;cursor:pointer;font-size:12px}
+.copy:active{transform:scale(.95)}
+.thx{margin-top:14px;font-size:12.5px;color:var(--pk2)}
+/* footer */
+.foot{text-align:center;color:var(--mut);font-size:12px;padding:30px 20px;line-height:1.9}
+.foot .sign{color:var(--pk2);font-weight:800;font-size:13px;margin-bottom:6px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-9.5-8.5C1 8.5 2.4 5 6 5c2 0 3.2 1.2 4 2.3C10.8 6.2 12 5 14 5c3.6 0 5 3.5 3.5 6.5C19 15.6 12 20 12 20z"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+<symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></symbol>
+<symbol id="i-coin" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+<symbol id="i-arw" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+</defs></svg>
+
+<div class="wrap">
+  <div class="top">
+    <div class="logo">阿<b>東</b> <span style="font-size:12px;color:var(--mut);font-weight:400">寫真日常</span></div>
+    <button class="donate-sm" onclick="openDonate()"><svg class="ic fill"><use href="#i-heart"/></svg> 抖內支持</button>
+  </div>
+
+  <div class="hero">
+    <img class="ava" id="avatar" src="photos/avatar.webp" alt="阿東" onerror="this.style.background='linear-gradient(145deg,#e23bb0,#4fe0ff)';this.removeAttribute('src')">
+    <h1 class="hname">嗨，我是<span class="g">阿東</span></h1>
+    <p class="htag">實測筆記 · 寫真日常 —— 這裡的圖，只給支持我的你 ♡</p>
+    <div class="hchips"><span class="chip">獨家寫真</span><span class="chip">支持者專屬</span><span class="chip">持續更新</span></div>
+    <br>
+    <button class="donate-big" onclick="openDonate()"><svg class="ic fill"><use href="#i-heart"/></svg> 抖內支持阿東</button>
+  </div>
+
+  <div class="promo">
+    <div class="promo-t">跟著阿東一起<span class="g">玩、一起賺</span> ✦</div>
+    <div class="promo-s">我玩夜色、我跟預測站報牌 —— 想一起的往下看</div>
+    <a class="promo-btn agent" id="agentBtn" href="#" target="_blank" rel="noopener"><svg class="ic"><use href="#i-coin"/></svg> 加入夜色代理・賺佣金 <svg class="ic arw"><use href="#i-arw"/></svg></a>
+    <a class="promo-btn pred" id="predBtn" href="#" target="_blank" rel="noopener"><svg class="ic fill"><use href="#i-bolt"/></svg> 免費領 7 天 VIP 報牌 <svg class="ic arw"><use href="#i-arw"/></svg></a>
+  </div>
+
+  <div class="gwrap">
+    <div class="gtitle"><svg class="ic" style="color:var(--pk2)"><use href="#i-cam"/></svg> 最新<span class="g">寫真</span></div>
+    <div class="gsub">點圖看大圖 · 左右滑看下一張</div>
+    <div class="grid" id="grid"></div>
+    <div class="gempty" id="empty" style="display:none"><svg class="ic" style="width:26px;height:26px;color:var(--pk2)"><use href="#i-spark"/></svg><br>寫真整理中，很快就更新 ♡</div>
+  </div>
+
+  <div class="foot">
+    <div class="sign">阿東 ♡ 謝謝每一個支持我的你</div>
+    你的抖內是我持續創作的動力。
+  </div>
+</div>
+
+<!-- lightbox -->
+<div class="lb" id="lb">
+  <button class="x" onclick="closeLb()">✕</button>
+  <button class="nav prev" onclick="lbStep(-1)">‹</button>
+  <img id="lbImg" src="" alt="">
+  <button class="nav next" onclick="lbStep(1)">›</button>
+</div>
+
+<!-- donate modal -->
+<div class="modal" id="modal">
+  <div class="mbox">
+    <button class="x" onclick="closeDonate()">✕</button>
+    <div class="heart">♡</div>
+    <h3>抖內支持阿東</h3>
+    <p>用 USDT 抖內，掃碼或複製地址即可 ♡</p>
+    <img class="qr" id="qr" src="" alt="USDT QR">
+    <div class="netlab" id="netlab">USDT · TRC20 網路</div>
+    <div class="addr"><code id="addr"></code><button class="copy" onclick="copyAddr()"><svg class="ic fill" style="width:13px;height:13px"><use href="#i-copy"/></svg> 複製</button></div>
+    <div class="thx" id="thx">謝謝你的支持，我會繼續努力 ♡</div>
+  </div>
+</div>
+
+<script>
+// ===== 設定：換成阿東專屬 USDT 地址 =====
+var WALLET='TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';   // ← 這裡換成阿東的收款地址（建議獨立新錢包）
+var NETWORK='USDT · TRC20 網路';                     // 網路標示
+var AGENT_URL='https://ys89.bet/?proxy=d83wfg&utm_source=adong&utm_medium=fanpage&utm_campaign=agent';   // 夜色代理/註冊(代理碼 d83wfg)
+var PREDICT_URL='https://ad-sportpage.pages.dev/?utm_source=adong&utm_medium=fanpage&utm_campaign=predict';   // 預測站廣告 LP（免費7天VIP → 導夜色註冊）
+// =====================================
+(function(){var a=document.getElementById('agentBtn'),p=document.getElementById('predBtn');if(a)a.href=AGENT_URL;if(p)p.href=PREDICT_URL;})();
+document.getElementById('addr').textContent=WALLET;
+document.getElementById('netlab').textContent=NETWORK;
+document.getElementById('qr').src='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data='+encodeURIComponent(WALLET);
+function openDonate(){document.getElementById('modal').classList.add('on');}
+function closeDonate(){document.getElementById('modal').classList.remove('on');}
+function copyAddr(){navigator.clipboard&&navigator.clipboard.writeText(WALLET);var t=document.getElementById('thx');t.textContent='✓ 地址已複製！謝謝你 ♡';setTimeout(function(){t.textContent='謝謝你的支持，我會繼續努力 ♡';},2200);}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeDonate();});
+
+// ===== 相簿：讀 photos.json（檔名陣列）=====
+var PHOTOS=[],cur=0;
+fetch('photos.json?v='+Date.now()).then(function(r){return r.json();}).then(function(list){
+  PHOTOS=(list||[]).filter(function(f){return !/avatar\./i.test(f);});
+  var grid=document.getElementById('grid');
+  if(!PHOTOS.length){document.getElementById('empty').style.display='block';return;}
+  grid.innerHTML=PHOTOS.map(function(f,i){return '<a class="gitem" onclick="openLb('+i+')"><img loading="lazy" src="photos/'+f+'" alt="阿東寫真"></a>';}).join('');
+}).catch(function(){document.getElementById('empty').style.display='block';});
+function openLb(i){cur=i;document.getElementById('lbImg').src='photos/'+PHOTOS[i];document.getElementById('lb').classList.add('on');}
+function closeLb(){document.getElementById('lb').classList.remove('on');}
+function lbStep(d){cur=(cur+d+PHOTOS.length)%PHOTOS.length;document.getElementById('lbImg').src='photos/'+PHOTOS[cur];}
+document.getElementById('lb').addEventListener('click',function(e){if(e.target===this)closeLb();});
+document.addEventListener('keydown',function(e){if(!document.getElementById('lb').classList.contains('on'))return;if(e.key==='Escape')closeLb();if(e.key==='ArrowLeft')lbStep(-1);if(e.key==='ArrowRight')lbStep(1);});
+</script>
+</body>
+</html>
