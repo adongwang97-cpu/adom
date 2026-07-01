@@ -12,6 +12,15 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://api.qrserver.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,800;1,600&family=Great+Vibes&family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- ▼▼ GA4：換成阿東「獨立」property 的 Measurement ID（別接主帳號共用的）▼▼ -->
+<script>
+var GA_ID='G-XXXXXXXXXX';   // ← 只改這裡：阿東專屬 GA4 ID
+if(GA_ID.indexOf('XXXX')<0){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id='+GA_ID;document.head.appendChild(s);}
+window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
+gtag('js',new Date());gtag('config',GA_ID);
+function track(n,p){try{gtag('event',n,p||{});}catch(e){}}
+</script>
+<!-- ▲▲ GA4 ▲▲ -->
 <style>
 :root{
   --bg:#160610; --card:rgba(232,192,125,.055);
@@ -269,9 +278,13 @@ var VIP_CHANNEL_URL='https://t.me/REPLACE私密頻道連結';  // ← 私密 TG 
 document.getElementById('addr').textContent=WALLET;
 document.getElementById('netlab').textContent=NETWORK;
 document.getElementById('qr').src='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data='+encodeURIComponent(WALLET);
-function openDonate(){document.getElementById('modal').classList.add('on');}
+function openDonate(){document.getElementById('modal').classList.add('on');track('donate_open');}
+// GA4 CTA 點擊事件
+(function(){function on(id,n,extra){var el=document.getElementById(id);if(el)el.addEventListener('click',function(){track(n,extra||{});});}
+  on('agentBtn','click_agent',{loc:'promo'});on('predBtn','click_predict',{loc:'promo'});
+  on('vaultAgent','click_agent',{loc:'vault'});on('chanBtn','click_channel');})();
 function closeDonate(){document.getElementById('modal').classList.remove('on');}
-function copyAddr(){navigator.clipboard&&navigator.clipboard.writeText(WALLET);var t=document.getElementById('thx');t.textContent='✓ 地址已複製！謝謝你 ♡';setTimeout(function(){t.textContent='謝謝你的支持，我會繼續努力 ♡';},2200);}
+function copyAddr(){navigator.clipboard&&navigator.clipboard.writeText(WALLET);track('donate_copy');var t=document.getElementById('thx');t.textContent='✓ 地址已複製！謝謝你 ♡';setTimeout(function(){t.textContent='謝謝你的支持，我會繼續努力 ♡';},2200);}
 document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeDonate();});
 
 // ===== 漂浮花瓣 / 愛心 =====
@@ -316,7 +329,7 @@ function revealVault(){document.getElementById('vaultLocked').style.display='non
 function tryUnlock(){
   var v=(document.getElementById('codeInput').value||'').trim().toLowerCase();
   var m=document.getElementById('codeMsg');
-  if(v===String(UNLOCK_CODE).trim().toLowerCase()){localStorage.setItem('adong_vault','1');m.style.color='var(--gold2)';m.textContent='✓ 解鎖成功！高清內容出現了 ♡';setTimeout(revealVault,600);}
+  if(v===String(UNLOCK_CODE).trim().toLowerCase()){localStorage.setItem('adong_vault','1');track('unlock_success');m.style.color='var(--gold2)';m.textContent='✓ 解鎖成功！高清內容出現了 ♡';setTimeout(revealVault,600);}
   else{m.style.color='var(--rose2)';m.textContent='解鎖碼不對，抖內或加入夜色後私訊阿東拿碼 ♡';}
 }
 function openLb(i){cur=i;document.getElementById('lbImg').src='photos/'+PHOTOS[i];document.getElementById('lb').classList.add('on');}
