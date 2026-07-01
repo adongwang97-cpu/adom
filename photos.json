@@ -1,11 +1,15 @@
-[
-  "01.webp",
-  "02.webp",
-  "03.webp",
-  "04.webp",
-  "05.webp",
-  "06.webp",
-  "07.webp",
-  "08.webp",
-  "09.webp"
-]
+{
+  "soccer": [
+    "soccer-01.webp",
+    "soccer-02.webp",
+    "soccer-03.webp",
+    "soccer-04.webp"
+  ],
+  "cafe": [
+    "cafe-01.webp",
+    "cafe-02.webp",
+    "cafe-03.webp",
+    "cafe-04.webp",
+    "cafe-05.webp"
+  ]
+}

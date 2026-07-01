@@ -76,6 +76,9 @@ body::after{content:"";position:fixed;inset:-2px;z-index:-1;opacity:.4;
 .gtitle{text-align:center;font-size:20px;font-weight:900;margin-bottom:4px}
 .gtitle .g{color:var(--pk2)}
 .gsub{text-align:center;color:var(--mut);font-size:13px;margin-bottom:20px}
+.gcat{font-size:17px;font-weight:900;color:var(--pk2);margin:22px 0 12px;display:flex;align-items:center;gap:8px}
+.gcat .ic{color:var(--cy);width:22px;height:22px}
+.gcount{font-size:11.5px;font-weight:600;color:var(--mut);background:rgba(255,120,200,.12);padding:2px 10px;border-radius:20px}
 .grid{column-count:2;column-gap:12px}
 @media(min-width:640px){.grid{column-count:3}}
 @media(min-width:900px){.grid{column-count:4}}
@@ -150,7 +153,7 @@ body::after{content:"";position:fixed;inset:-2px;z-index:-1;opacity:.4;
   <div class="gwrap">
     <div class="gtitle"><svg class="ic" style="color:var(--pk2)"><use href="#i-cam"/></svg> 最新<span class="g">寫真</span></div>
     <div class="gsub">點圖看大圖 · 左右滑看下一張</div>
-    <div class="grid" id="grid"></div>
+    <div id="gallery"></div>
     <div class="gempty" id="empty" style="display:none"><svg class="ic" style="width:26px;height:26px;color:var(--pk2)"><use href="#i-spark"/></svg><br>寫真整理中，很快就更新 ♡</div>
   </div>
 
@@ -186,7 +189,7 @@ body::after{content:"";position:fixed;inset:-2px;z-index:-1;opacity:.4;
 // ===== 設定：換成阿東專屬 USDT 地址 =====
 var WALLET='TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';   // ← 這裡換成阿東的收款地址（建議獨立新錢包）
 var NETWORK='USDT · TRC20 網路';                     // 網路標示
-var AGENT_URL='https://ys89.bet/?proxy=d83wfg&utm_source=adong&utm_medium=fanpage&utm_campaign=agent';   // 夜色代理/註冊(代理碼 d83wfg)
+var AGENT_URL='https://ys89.bet/?proxy=rs82gq&utm_source=adong&utm_medium=fanpage&utm_campaign=agent';   // 夜色代理/註冊(阿東代理碼 rs82gq)
 var PREDICT_URL='https://ad-sportpage.pages.dev/?utm_source=adong&utm_medium=fanpage&utm_campaign=predict';   // 預測站廣告 LP（免費7天VIP → 導夜色註冊）
 // =====================================
 (function(){var a=document.getElementById('agentBtn'),p=document.getElementById('predBtn');if(a)a.href=AGENT_URL;if(p)p.href=PREDICT_URL;})();
@@ -198,13 +201,21 @@ function closeDonate(){document.getElementById('modal').classList.remove('on');}
 function copyAddr(){navigator.clipboard&&navigator.clipboard.writeText(WALLET);var t=document.getElementById('thx');t.textContent='✓ 地址已複製！謝謝你 ♡';setTimeout(function(){t.textContent='謝謝你的支持，我會繼續努力 ♡';},2200);}
 document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeDonate();});
 
-// ===== 相簿：讀 photos.json（檔名陣列）=====
-var PHOTOS=[],cur=0;
-fetch('photos.json?v='+Date.now()).then(function(r){return r.json();}).then(function(list){
-  PHOTOS=(list||[]).filter(function(f){return !/avatar\./i.test(f);});
-  var grid=document.getElementById('grid');
+// ===== 相簿：讀 photos.json（依系列分類）=====
+var PHOTOS=[],cur=0;   // PHOTOS = 全部圖(供燈箱左右切換)
+var SECTIONS=[{k:'soccer',n:'世足賽系列',ic:'i-bolt'},{k:'cafe',n:'下午茶系列',ic:'i-cam'},{k:'other',n:'寫真',ic:'i-cam'}];
+fetch('photos.json?v='+Date.now()).then(function(r){return r.json();}).then(function(data){
+  if(Array.isArray(data))data={other:data};   // 舊格式相容
+  var g=document.getElementById('gallery'),html='';
+  SECTIONS.forEach(function(s){
+    var list=(data[s.k]||[]).filter(function(f){return !/avatar\./i.test(f);});
+    if(!list.length)return;
+    html+='<div class="gcat"><svg class="ic"><use href="#'+s.ic+'"/></svg> '+s.n+' <span class="gcount">'+list.length+' 張</span></div><div class="grid">';
+    list.forEach(function(f){var i=PHOTOS.length;PHOTOS.push(f);html+='<a class="gitem" onclick="openLb('+i+')"><img loading="lazy" src="photos/'+f+'" alt="阿東寫真"></a>';});
+    html+='</div>';
+  });
   if(!PHOTOS.length){document.getElementById('empty').style.display='block';return;}
-  grid.innerHTML=PHOTOS.map(function(f,i){return '<a class="gitem" onclick="openLb('+i+')"><img loading="lazy" src="photos/'+f+'" alt="阿東寫真"></a>';}).join('');
+  g.innerHTML=html;
 }).catch(function(){document.getElementById('empty').style.display='block';});
 function openLb(i){cur=i;document.getElementById('lbImg').src='photos/'+PHOTOS[i];document.getElementById('lb').classList.add('on');}
 function closeLb(){document.getElementById('lb').classList.remove('on');}
