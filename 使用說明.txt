@@ -1,0 +1,43 @@
+阿東寫真站 — 使用說明
+==============================
+
+【怎麼放圖(放一堆圖就看這個)】
+1. 把圖片檔(建議 .webp,也接受 jpg/png)丟進 photos/ 資料夾。
+2. 更新圖片清單,兩種方式擇一:
+   (A) 會用終端機 → 在本資料夾執行:  node build-gallery.mjs
+       它會自動掃描 photos/ 產生 photos.json。
+   (B) 不會終端機 → 直接編輯 photos.json,每張圖加一行檔名,例如:
+       [
+         "01.webp",
+         "02.webp",
+         "03.webp"
+       ]
+   ※ 檔名叫 avatar.* 的會被當大頭貼、不進相簿。
+
+【換大頭貼】
+把一張方形圖命名為 avatar.webp 放進 photos/ 即可。
+
+【設定抖內收款地址(重要)】
+打開 index.html,找到最上面這兩行,換成阿東的收款資料:
+   var WALLET='TXXXX...';        ← 換成阿東的 USDT 收款地址
+   var NETWORK='USDT · TRC20 網路'; ← 網路標示(TRC20/ERC20…)
+QR 會自動依地址重新產生,不用另外做圖。
+
+【設定推廣連結(代理招募 + 預測站)】
+同樣在 index.html 最上面:
+   var AGENT_URL='https://ys89.bet/?proxy=d83wfg&utm_...'; ← 已填(代理碼 d83wfg),要換代理碼改這裡
+   var PREDICT_URL='https://ad-sportpage.pages.dev/?utm_...'; ← 已填(預測站廣告LP,免費7天VIP)
+相簿上方有兩顆大按鈕:「加入夜色代理・賺佣金」→ AGENT_URL、「免費領7天VIP報牌」→ PREDICT_URL。
+兩顆最終都導到夜色平台註冊(代理鈕直達、預測站鈕經LP→bot→領VIP→註冊)。
+
+★ 建議:用一個「全新、獨立」的 USDT 錢包,不要跟預測站/ys89 共用同一個地址,
+  否則鏈上會被查出是同一夥(footprint),失去純粉絲站的意義。
+
+【部署】
+整個資料夾(index.html + photos/ + photos.json)上傳到你的靜態空間即可
+(Cloudflare Pages Direct Upload / Netlify / GitHub Pages 都行)。
+建議用「阿東專屬」的帳號部署,跟 ys89/預測站分開。
+
+【現況】
+- 目前 photos/ 內是 3 張粉色佔位圖 + 1 張佔位大頭貼,換成真圖後刪掉即可。
+- WALLET 目前是佔位 TXXXX,務必換成真地址才能收款。
