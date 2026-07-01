@@ -107,6 +107,29 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 .gitem::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(138,34,71,.4));opacity:0;transition:opacity .35s}
 .gitem:hover::after{opacity:1}
 .gempty{text-align:center;color:var(--mut);padding:50px 20px;border:1px dashed var(--line2);border-radius:16px;font-size:14px}
+/* 解鎖專區 */
+.vault{margin:16px 16px 4px;background:linear-gradient(165deg,rgba(138,34,71,.28),rgba(22,6,16,.6));border:1px solid var(--line2);border-radius:20px;padding:22px 18px;box-shadow:0 0 40px rgba(138,34,71,.35);backdrop-filter:blur(3px)}
+.vault-h{text-align:center;font-family:'Playfair Display','Noto Serif TC',serif;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px}
+.vault-h .ic{color:var(--gold);width:20px;height:20px}
+.vault-h .g{background:linear-gradient(90deg,var(--gold),var(--rose2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.vault-s{text-align:center;color:var(--mut);font-size:12.5px;margin:6px 0 16px}
+.vault-prev{display:flex;gap:10px;overflow:hidden;justify-content:center;margin-bottom:16px}
+.vault-prev .p{position:relative;width:96px;height:128px;border-radius:12px;overflow:hidden;border:1px solid var(--line);flex:0 0 auto}
+.vault-prev .p img{width:100%;height:100%;object-fit:cover;filter:blur(9px) brightness(.7) saturate(1.1);transform:scale(1.1)}
+.vault-prev .p::after{content:"";position:absolute;inset:0;background:radial-gradient(circle,transparent,rgba(22,6,16,.5))}
+.vault-lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--gold)}
+.vault-cta{display:flex;flex-direction:column;gap:10px;align-items:center}
+.vbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:fit-content;max-width:100%;text-decoration:none;font-weight:700;font-size:15px;border-radius:28px;padding:12px 26px;color:#2a0713;cursor:pointer;border:none;transition:transform .12s}
+.vbtn:active{transform:scale(.97)}
+.vbtn.d{background:linear-gradient(90deg,var(--rose),var(--gold))}
+.vbtn.r{background:linear-gradient(90deg,var(--gold),var(--rose2))}
+.code-row{display:flex;gap:8px;max-width:340px;margin:14px auto 0}
+.code-row input{flex:1;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:12px;padding:11px 14px;color:var(--tx);font-size:14px;text-align:center;letter-spacing:2px}
+.code-row input::placeholder{color:var(--mut);letter-spacing:0}
+.code-row button{flex:none;background:linear-gradient(90deg,var(--rose),var(--gold));border:none;color:#2a0713;font-weight:800;border-radius:12px;padding:11px 18px;cursor:pointer}
+.code-msg{text-align:center;font-size:12.5px;margin-top:10px;min-height:16px}
+.vault-note{text-align:center;color:var(--mut);font-size:12px;margin-top:12px}
+.chan-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:fit-content;max-width:100%;margin:14px auto 0;text-decoration:none;font-weight:800;font-size:15px;border-radius:28px;padding:13px 28px;color:#fff;background:linear-gradient(90deg,var(--berry),var(--rose));box-shadow:0 6px 22px rgba(255,122,156,.35)}
 /* lightbox */
 .lb{position:fixed;inset:0;z-index:80;background:rgba(15,4,10,.95);display:none;align-items:center;justify-content:center;padding:20px}
 .lb.on{display:flex}
@@ -182,6 +205,28 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
     <div class="gempty" id="empty" style="display:none"><svg class="ic" style="width:26px;height:26px;color:var(--rose2)"><use href="#i-spark"/></svg><br>寫真整理中，很快就更新 ♡</div>
   </div>
 
+  <!-- 🔒 解鎖專區 -->
+  <div class="vault rise" id="vault">
+    <div class="vault-h"><svg class="ic"><use href="#i-lock"/></svg> <span class="g">解鎖專區</span></div>
+    <div class="vault-s">更好看的高清寫真 ＋ 私密影片，只給解鎖的你 ♡</div>
+
+    <div id="vaultLocked">
+      <div class="vault-prev" id="vaultPrev"></div>
+      <div class="vault-cta">
+        <button class="vbtn d" onclick="openDonate()"><svg class="ic fill"><use href="#i-heart"/></svg> 抖內解鎖</button>
+        <a class="vbtn r" id="vaultAgent" href="#" target="_blank" rel="noopener"><svg class="ic"><use href="#i-dice"/></svg> 加入夜色・解鎖</a>
+      </div>
+      <div class="code-row"><input id="codeInput" type="text" placeholder="輸入解鎖碼" autocomplete="off"><button onclick="tryUnlock()">解鎖</button></div>
+      <div class="code-msg" id="codeMsg"></div>
+      <div class="vault-note">抖內 或 加入夜色後，私訊阿東拿解鎖碼 ♡</div>
+    </div>
+
+    <div id="vaultUnlocked" style="display:none">
+      <div class="grid" id="vipGrid"></div>
+      <a class="chan-btn" id="chanBtn" href="#" target="_blank" rel="noopener"><svg class="ic fill"><use href="#i-heart"/></svg> 高清照＋私密影片・進私密頻道 →</a>
+    </div>
+  </div>
+
   <div class="foot">
     <div class="sign">thank you ♡</div>
     謝謝每一個支持我的你，你的抖內是我持續創作的動力。
@@ -216,8 +261,11 @@ var WALLET='TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';   // ← 這裡換成阿東的
 var NETWORK='USDT · TRC20 網路';                     // 網路標示
 var AGENT_URL='https://ys89.bet/?proxy=rs82gq&utm_source=adong&utm_medium=fanpage&utm_campaign=agent';   // 夜色代理/註冊(阿東代理碼 rs82gq)
 var PREDICT_URL='https://ad-sportpage.pages.dev/?utm_source=adong&utm_medium=fanpage&utm_campaign=predict';   // 預測站廣告 LP（免費7天VIP → 導夜色註冊）
+var UNLOCK_CODE='adong520';                          // ← 解鎖碼(抖內/註冊後你私訊給支持者,可自行改)
+var VIP_CHANNEL_URL='https://t.me/REPLACE私密頻道連結';  // ← 私密 TG 頻道(高清照+影片放這,粉絲解鎖後點進)
 // =====================================
-(function(){var a=document.getElementById('agentBtn'),p=document.getElementById('predBtn');if(a)a.href=AGENT_URL;if(p)p.href=PREDICT_URL;})();
+(function(){var a=document.getElementById('agentBtn'),p=document.getElementById('predBtn');if(a)a.href=AGENT_URL;if(p)p.href=PREDICT_URL;
+  var va=document.getElementById('vaultAgent'),cb=document.getElementById('chanBtn');if(va)va.href=AGENT_URL;if(cb)cb.href=VIP_CHANNEL_URL;})();
 document.getElementById('addr').textContent=WALLET;
 document.getElementById('netlab').textContent=NETWORK;
 document.getElementById('qr').src='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data='+encodeURIComponent(WALLET);
@@ -248,9 +296,29 @@ fetch('photos.json?v='+Date.now()).then(function(r){return r.json();}).then(func
     list.forEach(function(f){var i=PHOTOS.length;PHOTOS.push(f);html+='<a class="gitem" onclick="openLb('+i+')"><img loading="lazy" src="photos/'+f+'" alt="阿東寫真"></a>';});
     html+='</div>';
   });
-  if(!PHOTOS.length){document.getElementById('empty').style.display='block';return;}
-  g.innerHTML=html;
+  if(PHOTOS.length)g.innerHTML=html;else document.getElementById('empty').style.display='block';
+  buildVault(data);
 }).catch(function(){document.getElementById('empty').style.display='block';});
+
+// ===== 🔒 解鎖專區 =====
+function buildVault(data){
+  var vip=(data.vip||[]);
+  // 模糊預覽:優先用 vip 照,沒有就拿公開照當 teaser
+  var teaser=(vip.length?vip:[].concat(data.life||[],data.cafe||[],data.soccer||[])).slice(0,3);
+  document.getElementById('vaultPrev').innerHTML=teaser.map(function(f){return '<div class="p"><img src="photos/'+f+'" alt=""><div class="vault-lock"><svg class="ic fill" style="width:22px;height:22px"><use href="#i-lock"/></svg></div></div>';}).join('');
+  // 解鎖後的 vip 照(可點大圖)
+  var vg=document.getElementById('vipGrid');
+  if(vip.length){vg.innerHTML=vip.map(function(f){var i=PHOTOS.length;PHOTOS.push(f);return '<a class="gitem" onclick="openLb('+i+')"><img loading="lazy" src="photos/'+f+'" alt="阿東高清寫真"></a>';}).join('');}
+  else{vg.innerHTML='<div class="vault-note" style="padding:14px 0">高清寫真陸續更新中，影片先進私密頻道看 ♡</div>';}
+  if(localStorage.getItem('adong_vault')==='1')revealVault();
+}
+function revealVault(){document.getElementById('vaultLocked').style.display='none';document.getElementById('vaultUnlocked').style.display='block';}
+function tryUnlock(){
+  var v=(document.getElementById('codeInput').value||'').trim().toLowerCase();
+  var m=document.getElementById('codeMsg');
+  if(v===String(UNLOCK_CODE).trim().toLowerCase()){localStorage.setItem('adong_vault','1');m.style.color='var(--gold2)';m.textContent='✓ 解鎖成功！高清內容出現了 ♡';setTimeout(revealVault,600);}
+  else{m.style.color='var(--rose2)';m.textContent='解鎖碼不對，抖內或加入夜色後私訊阿東拿碼 ♡';}
+}
 function openLb(i){cur=i;document.getElementById('lbImg').src='photos/'+PHOTOS[i];document.getElementById('lb').classList.add('on');}
 function closeLb(){document.getElementById('lb').classList.remove('on');}
 function lbStep(d){cur=(cur+d+PHOTOS.length)%PHOTOS.length;var im=document.getElementById('lbImg');im.style.animation='none';im.offsetHeight;im.style.animation='';im.src='photos/'+PHOTOS[cur];}
