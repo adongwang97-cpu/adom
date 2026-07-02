@@ -42,6 +42,22 @@ const DEFAULT_SECTIONS = [
 ];
 const ALLOWED_ICONS = new Set(['i-heart', 'i-cam', 'i-bolt', 'i-spark', 'i-lock', 'i-dice', 'i-coin']);
 
+// ── 私密頻道單次邀請連結：Silver/Gold 抖內確認付款後，用 bot 現生一條「只能用一次」的邀請連結，
+//    不怕連結被轉傳濫用。TG_BOT_TOKEN 是 CF secret；頻道數字 ID 填這裡(bot 要先被加成頻道管理員)。
+const TG_CHANNEL_ID = 'REPLACE_頻道數字ID';   // ← 阿東給我頻道ID後，我改這裡（例如 -1001234567890）
+async function tgCreateOneTimeInvite(env) {
+  if (!env.TG_BOT_TOKEN || TG_CHANNEL_ID.startsWith('REPLACE')) return null;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${env.TG_BOT_TOKEN}/createChatInviteLink`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: TG_CHANNEL_ID, member_limit: 1, expire_date: Math.floor(Date.now() / 1000) + 60 * 60 * 48 }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return (data && data.ok && data.result && data.result.invite_link) || null;
+  } catch { return null; }
+}
+
 const json = (data, status = 200, extraHeaders) => new Response(JSON.stringify(data), {
   status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...(extraHeaders || {}) },
 });
@@ -87,6 +103,8 @@ async function ensureSchema(env) {
   ];
   try {
     for (const s of stmts) await env.DB.prepare(s).run();
+    // 舊表可能沒有 channel_link 欄位（單次邀請連結）；已存在會報錯，吞掉即可
+    try { await env.DB.prepare('ALTER TABLE donations ADD COLUMN channel_link TEXT').run(); } catch { /* 欄位已存在 */ }
     schemaReady = true;
   } catch { /* 下次請求再試 */ }
 }
@@ -218,7 +236,13 @@ export default {
         let data; try { data = JSON.parse(raw); } catch { return new Response('bad_json', { status: 400 }); }
         const orderId = data.order_id || '';
         if (orderId && OXA_PAID.has(data.status)) {
+          const before = await env.DB.prepare('SELECT tier, status FROM donations WHERE order_id=?').bind(orderId).first().catch(() => null);
           await env.DB.prepare("UPDATE donations SET status='paid', paid_at=datetime('now') WHERE order_id=? AND status!='paid'").bind(orderId).run();
+          // Silver/Gold 首次確認付款 → 現生一條「單次」邀請連結(不怕被轉傳濫用)
+          if (before && before.status !== 'paid' && before.tier !== 'bronze') {
+            const link = await tgCreateOneTimeInvite(env);
+            if (link) await env.DB.prepare('UPDATE donations SET channel_link=? WHERE order_id=?').bind(link, orderId).run();
+          }
         }
         return new Response('OK', { status: 200 });
       }
@@ -227,9 +251,9 @@ export default {
       if (p === '/api/donate/status' && method === 'GET') {
         const order = url.searchParams.get('order') || '';
         if (!env.DB) return json({ status: 'unknown' });
-        const rec = await env.DB.prepare('SELECT status, tier FROM donations WHERE order_id=?').bind(order).first().catch(() => null);
+        const rec = await env.DB.prepare('SELECT status, tier, channel_link FROM donations WHERE order_id=?').bind(order).first().catch(() => null);
         if (!rec) return json({ status: 'unknown' });
-        return json({ status: rec.status, tier: rec.tier });
+        return json({ status: rec.status, tier: rec.tier, channel_link: rec.channel_link || null });
       }
 
       // ── 公開：感謝牆(來自已付款的抖內紀錄) ──

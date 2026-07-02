@@ -312,7 +312,7 @@ var NETWORK='USDT · TRC20 網路';                     // 網路標示
 var AGENT_URL='https://ys89.bet/?proxy=rs82gq&utm_source=adong&utm_medium=fanpage&utm_campaign=agent';   // 夜色代理/註冊(阿東代理碼 rs82gq)
 var PREDICT_URL='https://ad-sportpage.pages.dev/?kol=adong&utm_source=adong&utm_medium=fanpage&utm_campaign=predict';   // 預測站廣告 LP（帶 KOL=adong → 追蹤帶量）
 var UNLOCK_CODE='adong520';                          // ← 解鎖碼(抖內/註冊後你私訊給支持者,可自行改)
-var VIP_CHANNEL_URL='https://t.me/REPLACE私密頻道連結';  // ← 私密 TG 頻道(高清照+影片放這,粉絲解鎖後點進)
+var VIP_CHANNEL_URL='https://t.me/+-h2PrPh-_0w3MjY1';  // ← 私密 TG 頻道固定連結(解鎖碼流程用；抖內流程優先用單次專屬連結，這條當備援)
 // =====================================
 (function(){var a=document.getElementById('agentBtn'),p=document.getElementById('predBtn');if(a)a.href=AGENT_URL;if(p)p.href=PREDICT_URL;
   var va=document.getElementById('vaultAgent'),cb=document.getElementById('chanBtn');if(va)va.href=AGENT_URL;if(cb)cb.href=VIP_CHANNEL_URL;})();
@@ -372,19 +372,19 @@ function esc2(s){return String(s).replace(/[<>&]/g,function(c){return{'<':'&lt;'
   (function poll(){
     tries++;
     fetch('/api/donate/status?order='+encodeURIComponent(order)).then(function(r){return r.json();}).then(function(d){
-      if(d.status==='paid'){showThanks(d.tier);}
+      if(d.status==='paid'){showThanks(d.tier,d.channel_link);}
       else if(tries<20){setTimeout(poll,3000);}
       else{document.getElementById('thanksTitle').textContent='確認中，請稍後查看';document.getElementById('thanksBody').textContent='付款可能還在鏈上確認，晚點重整這頁會自動顯示結果 ♡';}
     }).catch(function(){if(tries<20)setTimeout(poll,3000);});
   })();
 })();
-function showThanks(tierKey){
+function showThanks(tierKey,channelLink){
   track('donate_success',{tier:tierKey});
   var t=DONATE_TIERS[tierKey]||{n:'支持者',perks:[]};
   document.getElementById('thanksTitle').textContent='謝謝你的支持！♡';
   document.getElementById('thanksBody').innerHTML='你已是 <b style="color:var(--gold2)">'+t.n+'</b>，福利已解鎖：<br>'+t.perks.join('<br>');
   var actions='<button class="payBtn" style="margin-top:6px" onclick="unlockFromDonate()"><svg class="ic"><use href="#i-lock"/></svg> 立即解鎖高清寫真</button>';
-  if(tierKey!=='bronze')actions+='<a class="payBtn" style="display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;background:linear-gradient(90deg,var(--rose),var(--berry));color:#fff" href="'+VIP_CHANNEL_URL+'" target="_blank" rel="noopener"><svg class="ic fill"><use href="#i-heart"/></svg> 進私密頻道 →</a>';
+  if(tierKey!=='bronze')actions+='<a class="payBtn" style="display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;background:linear-gradient(90deg,var(--rose),var(--berry));color:#fff" href="'+(channelLink||VIP_CHANNEL_URL)+'" target="_blank" rel="noopener"><svg class="ic fill"><use href="#i-heart"/></svg> 進私密頻道 →</a>';
   document.getElementById('thanksActions').innerHTML=actions;
 }
 function unlockFromDonate(){localStorage.setItem('adong_vault','1');document.getElementById('thanksBox').classList.remove('on');var v=document.getElementById('vault');if(v)v.scrollIntoView({behavior:'smooth'});if(typeof revealVault==='function')revealVault();}

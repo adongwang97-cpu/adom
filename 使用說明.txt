@@ -46,11 +46,21 @@ index.html 裡也有一份一樣的 DONATE_TIERS(前端顯示用)，改的話兩
 - 帶回網站顯示感謝頁 + 對應福利(解鎖高清寫真 / 進私密頻道連結)
 - 如果有填暱稱，出現在首頁「感謝牆」(資料來自 D1 donations 表，已付款才會顯示)
 
-【解鎖碼 / 私密頻道 / 收款地址】
+【私密頻道 — 單次專屬邀請連結(防連結被轉傳濫用)】
+Silver/Gold 抖內確認付款後，系統會用 bot(@Adombaby520_bot)現生一條「只能用一次、48小時內有效」
+的專屬邀請連結給該粉絲，不是固定連結，別人轉傳也進不去。設定：
+1. 把 @Adombaby520_bot 加成私密頻道的「管理員」，至少要給「邀請使用者連結」權限
+2. CF adom → Settings → Variables and Secrets → Add → TG_BOT_TOKEN = bot 的 API token
+   (BotFather 給的那串，⚠️ 這也是憑證，別再貼進對話，直接貼 CF 表單就好)
+3. src/worker.js 最上面 TG_CHANNEL_ID 常數要填頻道的數字 ID(不是邀請連結)，
+   跟 Claude 說「頻道管理員加好了」，Claude 會幫你抓出這個 ID 並填上去
+4. 沒設定好之前，系統會自動退回用固定的 VIP_CHANNEL_URL(不會開天窗)
+
+【解鎖碼 / 私密頻道固定連結 / 收款地址】
 打開 index.html 最上面：
    var WALLET='TXXXX...';           ← 阿東的 USDT 收款地址(彈性抖內QR用)
    var UNLOCK_CODE='adong520';      ← 手動解鎖碼(私訊發，或抖內Bronze以上自動解鎖)
-   var VIP_CHANNEL_URL='...';       ← 私密 TG 頻道連結(高清照以上/影片放這，Silver+抖內後出現)
+   var VIP_CHANNEL_URL='https://t.me/+-h2PrPh-_0w3MjY1';  ← 頻道固定連結(解鎖碼流程用+單次連結的備援)
    var AGENT_URL='...';             ← 夜色代理連結(已接代理碼 rs82gq)
    var PREDICT_URL='...';           ← 預測站廣告LP(已接 KOL=adong 追蹤)
 
