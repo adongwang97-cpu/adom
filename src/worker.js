@@ -504,6 +504,17 @@ export default {
           await env.DB.prepare('INSERT INTO posts (caption, photo, scheduled_at) VALUES (?,?,?)').bind(caption, photo, scheduledAt).run();
           return json({ ok: true });
         }
+        if (p === '/api/admin/post/bulk' && method === 'POST') {
+          if (!env.DB) return json({ error: 'db_not_bound' }, 503);
+          const body = await request.json().catch(() => ({}));
+          const lines = String(body.text || '').split('\n').map(s => s.trim()).filter(Boolean).slice(0, 50);
+          let added = 0;
+          for (const caption of lines) {
+            await env.DB.prepare('INSERT INTO posts (caption, photo, scheduled_at) VALUES (?,NULL,NULL)').bind(caption.slice(0, 900)).run();
+            added++;
+          }
+          return json({ ok: true, added });
+        }
         if (p === '/api/admin/post/delete' && method === 'POST') {
           if (!env.DB) return json({ error: 'db_not_bound' }, 503);
           const { id } = await request.json().catch(() => ({}));

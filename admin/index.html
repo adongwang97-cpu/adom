@@ -120,6 +120,14 @@ textarea{resize:vertical;min-height:52px}
         <div id="postMsg" class="dim" style="min-height:16px;text-align:center"></div>
         <button class="btn gh" onclick="sendPostNow()">🚀 立刻試發一則(驗證設定用)</button>
       </div>
+
+      <div class="field" style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px">
+        <label for="bulkText">📋 批次貼入(每行一則，全部丟進輪播池)</label>
+        <textarea id="bulkText" style="min-height:140px;font-size:15px"></textarea>
+        <div style="margin-top:8px"><button class="btn" onclick="bulkAdd()">批次加入排程</button></div>
+        <div id="bulkMsg" class="dim" style="margin-top:6px;min-height:16px;text-align:center"></div>
+      </div>
+
       <div class="postList" id="postList"></div>
     </div>
 
@@ -171,6 +179,7 @@ function init(){
     document.getElementById('dashboard').style.display='block';
     renderBanner();
     loadData();
+    var bt=document.getElementById('bulkText'); if(bt&&!bt.value) bt.value=SAMPLE_CAPTIONS;
   });
 }
 
@@ -244,6 +253,28 @@ function sendPostNow(){
   msg.textContent='發送中…';msg.style.color='';
   api('/api/admin/post/send-now',{method:'POST'}).then(function(res){
     if(res.data.ok){msg.textContent='✓ 已發送到頻道';msg.style.color='var(--ok)';loadPosts();}
+    else{msg.textContent='失敗：'+(res.data.error||'');msg.style.color='var(--danger)';}
+  });
+}
+
+// 預先寫好的 8 則輪播文案(Claude 準備的樣本，開啟頁面自動帶入，看不順眼可直接改再送出)
+var SAMPLE_CAPTIONS=[
+  '今天也是想見你的一天 ♡ 有沒有想我呀',
+  '睡前想到你，就順手拍了這張給你看 🌙',
+  '你猜猜今天穿了什麼顏色的心情？留言告訴我你猜的',
+  '謝謝一直在的你們，是你們讓我有動力繼續拍下去 ♡',
+  '偷偷跟你說一個小秘密：我最近在準備新系列，敬請期待',
+  '今天狀態超好，特別想跟你們分享這份好心情',
+  '忙碌的一天結束，來看看阿東放鬆一下的樣子吧',
+  '你們的每一則留言我都有看，真的很謝謝你們 ♡',
+].join('\n');
+function bulkAdd(){
+  var text=(document.getElementById('bulkText').value||'').trim();
+  var msg=document.getElementById('bulkMsg');
+  if(!text){msg.textContent='請先貼文案';msg.style.color='var(--danger)';return;}
+  msg.textContent='匯入中…';msg.style.color='';
+  api('/api/admin/post/bulk',{method:'POST',body:JSON.stringify({text:text})}).then(function(res){
+    if(res.ok){document.getElementById('bulkText').value='';msg.textContent='✓ 已加入 '+res.data.added+' 則到輪播池';msg.style.color='var(--ok)';loadPosts();}
     else{msg.textContent='失敗：'+(res.data.error||'');msg.style.color='var(--danger)';}
   });
 }
