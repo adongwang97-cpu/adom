@@ -182,6 +182,8 @@ async function ensureSchema(env) {
     for (const s of stmts) await env.DB.prepare(s).run();
     // 舊表可能沒有 channel_link 欄位（單次邀請連結）；已存在會報錯，吞掉即可
     try { await env.DB.prepare('ALTER TABLE donations ADD COLUMN channel_link TEXT').run(); } catch { /* 欄位已存在 */ }
+    // 舊表可能沒有 scheduled_at 欄位（指定日期發文）；已存在會報錯，吞掉即可
+    try { await env.DB.prepare('ALTER TABLE posts ADD COLUMN scheduled_at TEXT').run(); } catch { /* 欄位已存在 */ }
     schemaReady = true;
   } catch { /* 下次請求再試 */ }
 }
@@ -267,20 +269,42 @@ async function oxaVerifySign(rawBody, headerSig, apiKey) {
 }
 const OXA_PAID = new Set(['Paid', 'paid']);
 
-// ── 頻道自動發文：挑「最久沒發過(或從沒發過)」的一則發出去，天然輪播，新增/刪除都自動處理 ──
+// ── 輪播池：沒指定日期的文案，挑「最久沒發過(或從沒發過)」的一則發出去，新增/刪除都自動處理 ──
 async function runScheduledPost(env, origin) {
   if (!env.DB) return { ok: false, error: 'db_not_bound' };
   await ensureSchema(env);
-  const next = await env.DB.prepare('SELECT id, caption, photo FROM posts ORDER BY posted_at IS NOT NULL, posted_at ASC LIMIT 1').first().catch(() => null);
+  const next = await env.DB.prepare(
+    "SELECT id, caption, photo FROM posts WHERE scheduled_at IS NULL ORDER BY posted_at IS NOT NULL, posted_at ASC LIMIT 1"
+  ).first().catch(() => null);
   if (!next) return { ok: false, error: 'no_posts_queued' };
   const sent = await tgSendToChannel(env, origin, next.caption, next.photo);
   if (sent) await env.DB.prepare("UPDATE posts SET posted_at=datetime('now') WHERE id=?").bind(next.id).run();
   return { ok: sent, id: next.id, error: sent ? undefined : 'send_failed(檢查 TG_BOT_TOKEN / TG_CHANNEL_ID / bot 是否為頻道管理員)' };
 }
 
+// ── 指定日期的文案：時間一到就發，一次性(不進輪播)。每小時檢查一次，準度在1小時內 ──
+async function sendDueScheduledPosts(env, origin) {
+  if (!env.DB) return { sent: 0 };
+  await ensureSchema(env);
+  const due = (await env.DB.prepare(
+    "SELECT id, caption, photo FROM posts WHERE scheduled_at IS NOT NULL AND scheduled_at <= datetime('now') AND posted_at IS NULL ORDER BY scheduled_at ASC"
+  ).all().catch(() => ({ results: [] }))).results || [];
+  let sent = 0;
+  for (const p of due) {
+    const ok = await tgSendToChannel(env, origin, p.caption, p.photo);
+    if (ok) { await env.DB.prepare("UPDATE posts SET posted_at=datetime('now') WHERE id=?").bind(p.id).run(); sent++; }
+  }
+  return { sent };
+}
+
 export default {
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(runScheduledPost(env, `https://adom.adongwang97.workers.dev`));
+    const origin = `https://adom.adongwang97.workers.dev`;
+    ctx.waitUntil((async () => {
+      await sendDueScheduledPosts(env, origin);         // 每小時檢查：指定日期到了就發
+      const h = new Date().getUTCHours();
+      if (h === 12) await runScheduledPost(env, origin); // 台灣晚上8點：輪播池發一則(每天一次)
+    })());
   },
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -462,7 +486,7 @@ export default {
         // ── 頻道自動發文排程 ──
         if (p === '/api/admin/posts' && method === 'GET') {
           if (!env.DB) return json({ list: [] });
-          const { results } = await env.DB.prepare('SELECT id, caption, photo, posted_at FROM posts ORDER BY id DESC').all().catch(() => ({ results: [] }));
+          const { results } = await env.DB.prepare('SELECT id, caption, photo, scheduled_at, posted_at FROM posts ORDER BY (scheduled_at IS NULL), scheduled_at ASC, id DESC').all().catch(() => ({ results: [] }));
           return json({ list: results || [], tg_ready: !!(env.TG_BOT_TOKEN && !TG_CHANNEL_ID.startsWith('REPLACE')) });
         }
         if (p === '/api/admin/post' && method === 'POST') {
@@ -471,7 +495,13 @@ export default {
           const caption = String(body.caption || '').slice(0, 900);
           if (!caption) return json({ error: 'missing_caption' }, 400);
           const photo = body.photo ? String(body.photo).replace(/[^\w.\/-]/g, '').slice(0, 80) : null;
-          await env.DB.prepare('INSERT INTO posts (caption, photo) VALUES (?,?)').bind(caption, photo).run();
+          // scheduled_at：前端已轉成 UTC ISO 字串；空值＝丟進輪播池，不指定日期
+          let scheduledAt = null;
+          if (body.scheduled_at) {
+            const d = new Date(body.scheduled_at);
+            if (!isNaN(d.getTime())) scheduledAt = d.toISOString().slice(0, 19).replace('T', ' ');
+          }
+          await env.DB.prepare('INSERT INTO posts (caption, photo, scheduled_at) VALUES (?,?,?)').bind(caption, photo, scheduledAt).run();
           return json({ ok: true });
         }
         if (p === '/api/admin/post/delete' && method === 'POST') {

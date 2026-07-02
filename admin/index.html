@@ -89,11 +89,15 @@ select{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px
 
     <div class="panel">
       <h2>📢 頻道自動發文 <span id="tgStatusBadge"></span></h2>
-      <div class="dim">預先寫好文案，每天定時(台灣晚上8點)自動輪播發到私密頻道——最久沒發過的優先，新增/刪除都自動處理，不用手動排順序。</div>
+      <div class="dim">兩種模式：① 指定日期時間 → 準時發一次(最準1小時內)；② 不填日期 → 丟進輪播池，每天台灣晚上8點自動發「最久沒發過」的一則，不用排順序。</div>
       <div class="postRow">
         <textarea id="postCaption" placeholder="文案內容…" style="min-height:60px"></textarea>
         <select id="postPhoto"><option value="">(純文字，不帶圖)</option></select>
         <button class="btn sm" onclick="addPost()" style="height:fit-content">加入排程</button>
+      </div>
+      <div class="postRow" style="grid-template-columns:1fr auto">
+        <input type="datetime-local" id="postWhen">
+        <span class="dim" style="align-self:center">留空＝丟進輪播池(不指定日期)</span>
       </div>
       <div id="postMsg" class="dim" style="margin-top:6px;min-height:16px"></div>
       <div style="margin-top:10px"><button class="btn gh sm" onclick="sendPostNow()">🚀 立刻試發一則(驗證設定用)</button></div>
@@ -187,16 +191,22 @@ function loadPosts(){
 function renderPosts(list){
   var el=document.getElementById('postList');
   el.innerHTML=list.map(function(p){
-    return '<div class="postItem"><div class="txt">'+esc(p.caption)+(p.photo?'<div class="meta">📷 '+esc(p.photo)+'</div>':'')+'<div class="meta">'+(p.posted_at?'上次發出：'+esc(p.posted_at):'尚未發過')+'</div></div><button class="iconbtn" onclick="deletePost('+p.id+')">✕</button></div>';
+    var status;
+    if(p.posted_at) status='<span class="badge">✓ 已發送：'+esc(p.posted_at)+'</span>';
+    else if(p.scheduled_at) status='<span class="badge" style="background:rgba(79,224,255,.15);color:#4fe0ff">⏰ 排定：'+esc(p.scheduled_at)+'(UTC)</span>';
+    else status='<span class="badge">🔁 輪播池</span>';
+    return '<div class="postItem"><div class="txt">'+esc(p.caption)+(p.photo?'<div class="meta">📷 '+esc(p.photo)+'</div>':'')+'<div class="meta">'+status+'</div></div><button class="iconbtn" onclick="deletePost('+p.id+')">✕</button></div>';
   }).join('')||'<div class="dim">尚無排程文案</div>';
 }
 function addPost(){
   var caption=(document.getElementById('postCaption').value||'').trim();
   var photo=document.getElementById('postPhoto').value||null;
+  var whenLocal=document.getElementById('postWhen').value;   // datetime-local，瀏覽器本地時間、沒有時區資訊
+  var scheduledAt=whenLocal?new Date(whenLocal).toISOString():null;   // 轉成 UTC ISO 字串再送給後端
   var msg=document.getElementById('postMsg');
   if(!caption){msg.textContent='請輸入文案';msg.style.color='var(--danger)';return;}
-  api('/api/admin/post',{method:'POST',body:JSON.stringify({caption:caption,photo:photo})}).then(function(res){
-    if(res.ok){document.getElementById('postCaption').value='';msg.textContent='✓ 已加入排程';msg.style.color='var(--ok)';loadPosts();}
+  api('/api/admin/post',{method:'POST',body:JSON.stringify({caption:caption,photo:photo,scheduled_at:scheduledAt})}).then(function(res){
+    if(res.ok){document.getElementById('postCaption').value='';document.getElementById('postWhen').value='';msg.textContent='✓ 已加入排程';msg.style.color='var(--ok)';loadPosts();}
     else{msg.textContent='失敗：'+(res.data.error||'');msg.style.color='var(--danger)';}
   });
 }
