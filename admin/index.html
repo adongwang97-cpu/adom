@@ -21,9 +21,9 @@ h1{font-size:22px;font-weight:800}
 .btn.sm{padding:6px 12px;font-size:12.5px;border-radius:9px}
 .btn.danger{background:var(--danger);color:#fff}
 .btn:disabled{opacity:.5;cursor:not-allowed}
-input[type=text],input[type=password],textarea{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--tx);font-size:14px;font-family:inherit}
+input[type=text],input[type=password],input[type=datetime-local],textarea,select{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px;padding:12px 13px;color:var(--tx);font-size:16px;font-family:inherit}
 textarea{resize:vertical;min-height:52px}
-select{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--tx);font-size:13px}
+/* 16px 以上避免 iOS 打字自動放大整頁 */
 #loginBox{max-width:340px;margin:80px auto;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px 24px;text-align:center}
 #loginBox h1{margin-bottom:16px}
 #loginMsg{color:var(--danger);font-size:13px;margin-top:10px;min-height:18px}
@@ -49,8 +49,18 @@ select{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px
 .themeCard{border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer;font-size:13px}
 .themeCard.active{border-color:var(--gold);background:rgba(232,192,125,.1)}
 .dim{color:var(--mut);font-size:12.5px}
-.postRow{display:grid;grid-template-columns:1fr 140px auto;gap:8px;margin-top:8px;align-items:start}
-.postList{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+/* 寫文案 — 手機優先：直向堆疊、大字大按鈕、每個欄位有小標籤 */
+.composer{margin-top:10px;display:flex;flex-direction:column;gap:12px}
+.field label{display:block;font-size:12px;color:var(--gold2);font-weight:700;margin-bottom:5px;letter-spacing:.3px}
+#postCaption{min-height:110px;font-size:16px;line-height:1.6}
+.charCount{display:flex;justify-content:flex-end;font-size:11.5px;color:var(--mut);margin-top:4px}
+.charCount.warn{color:var(--danger)}
+.composeRow2{display:grid;grid-template-columns:1fr;gap:12px}
+.composer .btn{width:100%;padding:14px;font-size:15px;border-radius:12px}
+@media(min-width:600px){
+  .composeRow2{grid-template-columns:1fr 1fr}
+}
+.postList{margin-top:16px;display:flex;flex-direction:column;gap:10px}
 .postItem{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .postItem .txt{flex:1;font-size:13px;line-height:1.5}
 .postItem .meta{font-size:11px;color:var(--mut);margin-top:3px}
@@ -90,17 +100,26 @@ select{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px
     <div class="panel">
       <h2>📢 頻道自動發文 <span id="tgStatusBadge"></span></h2>
       <div class="dim">兩種模式：① 指定日期時間 → 準時發一次(最準1小時內)；② 不填日期 → 丟進輪播池，每天台灣晚上8點自動發「最久沒發過」的一則，不用排順序。</div>
-      <div class="postRow">
-        <textarea id="postCaption" placeholder="文案內容…" style="min-height:60px"></textarea>
-        <select id="postPhoto"><option value="">(純文字，不帶圖)</option></select>
-        <button class="btn sm" onclick="addPost()" style="height:fit-content">加入排程</button>
+      <div class="composer">
+        <div class="field">
+          <label for="postCaption">✍️ 文案內容</label>
+          <textarea id="postCaption" placeholder="想跟大家說什麼…" oninput="updateCharCount()"></textarea>
+          <div class="charCount" id="charCount">0 / 900</div>
+        </div>
+        <div class="composeRow2">
+          <div class="field">
+            <label for="postPhoto">📷 配圖(可不選)</label>
+            <select id="postPhoto"><option value="">(純文字，不帶圖)</option></select>
+          </div>
+          <div class="field">
+            <label for="postWhen">⏰ 指定發送時間(可不填)</label>
+            <input type="datetime-local" id="postWhen">
+          </div>
+        </div>
+        <button class="btn" onclick="addPost()">＋ 加入排程</button>
+        <div id="postMsg" class="dim" style="min-height:16px;text-align:center"></div>
+        <button class="btn gh" onclick="sendPostNow()">🚀 立刻試發一則(驗證設定用)</button>
       </div>
-      <div class="postRow" style="grid-template-columns:1fr auto">
-        <input type="datetime-local" id="postWhen">
-        <span class="dim" style="align-self:center">留空＝丟進輪播池(不指定日期)</span>
-      </div>
-      <div id="postMsg" class="dim" style="margin-top:6px;min-height:16px"></div>
-      <div style="margin-top:10px"><button class="btn gh sm" onclick="sendPostNow()">🚀 立刻試發一則(驗證設定用)</button></div>
       <div class="postList" id="postList"></div>
     </div>
 
@@ -198,6 +217,12 @@ function renderPosts(list){
     return '<div class="postItem"><div class="txt">'+esc(p.caption)+(p.photo?'<div class="meta">📷 '+esc(p.photo)+'</div>':'')+'<div class="meta">'+status+'</div></div><button class="iconbtn" onclick="deletePost('+p.id+')">✕</button></div>';
   }).join('')||'<div class="dim">尚無排程文案</div>';
 }
+function updateCharCount(){
+  var n=(document.getElementById('postCaption').value||'').length;
+  var el=document.getElementById('charCount');
+  el.textContent=n+' / 900';
+  el.classList.toggle('warn',n>900);
+}
 function addPost(){
   var caption=(document.getElementById('postCaption').value||'').trim();
   var photo=document.getElementById('postPhoto').value||null;
@@ -206,7 +231,7 @@ function addPost(){
   var msg=document.getElementById('postMsg');
   if(!caption){msg.textContent='請輸入文案';msg.style.color='var(--danger)';return;}
   api('/api/admin/post',{method:'POST',body:JSON.stringify({caption:caption,photo:photo,scheduled_at:scheduledAt})}).then(function(res){
-    if(res.ok){document.getElementById('postCaption').value='';document.getElementById('postWhen').value='';msg.textContent='✓ 已加入排程';msg.style.color='var(--ok)';loadPosts();}
+    if(res.ok){document.getElementById('postCaption').value='';document.getElementById('postWhen').value='';updateCharCount();msg.textContent='✓ 已加入排程';msg.style.color='var(--ok)';loadPosts();}
     else{msg.textContent='失敗：'+(res.data.error||'');msg.style.color='var(--danger)';}
   });
 }
