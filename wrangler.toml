@@ -1,0 +1,12 @@
+name = "adom"
+main = "src/worker.js"
+compatibility_date = "2024-09-23"
+
+[assets]
+directory = "./"
+binding = "ASSETS"
+
+# ── 以下兩個綁定要在 CF 儀表板手動加(見 使用說明.txt「後台設定」章節)──
+# R2 儲存桶 → binding 名稱填 PHOTOS
+# KV 命名空間 → binding 名稱填 SITE_KV
+# Secrets → ADMIN_PASS(後台密碼) / ADMIN_SECRET(簽章用亂碼,不用記)

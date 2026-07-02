@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-TW" data-theme="glam">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -297,17 +297,20 @@ window.addEventListener('scroll',function(){if(!avaF)return;var y=window.scrollY
 var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}})},{threshold:.12});
 document.querySelectorAll('.rise').forEach(function(el){io.observe(el);});
 
-// ===== 相簿：讀 photos.json（依系列分類）=====
+// ===== 相簿：讀 /api/photos.json（後台可管理，分類/文案/圖片都是動態的）=====
 var PHOTOS=[],cur=0;
-// 每個相簿的故事文案（可自行改 d 的內容）
-var SECTIONS=[
+// r2/ 開頭 = 後台上傳的圖(走 R2 代理)；其餘 = git 內建的靜態圖
+function psrc(f){ return f.indexOf('r2/')===0 ? '/photos/r2/'+f.slice(3) : 'photos/'+f; }
+// 沒有後端/API 打不通時的保底文案(跟後台預設一致，不會開天窗)
+var FALLBACK_SECTIONS=[
  {k:'soccer',n:'世足賽系列',ic:'i-bolt',d:'跟著世界盃一起瘋 —— 球場邊最亮的那個就是我，穿上球衣為我的主隊尖叫 ⚽'},
  {k:'cafe',n:'下午茶系列',ic:'i-cam',d:'沒有比賽的午後，一杯咖啡、一點慵懶 —— 這是只給你們看的悠閒時光 ☕'},
  {k:'life',n:'生活照系列',ic:'i-heart',d:'沒有濾鏡的日常，最真實、最放鬆的阿東，都在這裡 ♡'},
- {k:'other',n:'寫真',ic:'i-cam',d:''}
 ];
-fetch('photos.json?v='+Date.now()).then(function(r){return r.json();}).then(function(data){
+fetch('/api/photos.json?v='+Date.now()).then(function(r){return r.json();}).catch(function(){return fetch('photos.json?v='+Date.now()).then(function(r){return r.json();});}).then(function(data){
   if(Array.isArray(data))data={other:data};
+  document.documentElement.setAttribute('data-theme', data.__theme||'glam');
+  var SECTIONS=(data.__sections&&data.__sections.length)?data.__sections:FALLBACK_SECTIONS;
   var g=document.getElementById('gallery'),html='';
   SECTIONS.forEach(function(s){
     var list=(data[s.k]||[]).filter(function(f){return !/avatar\./i.test(f);});
@@ -315,7 +318,7 @@ fetch('photos.json?v='+Date.now()).then(function(r){return r.json();}).then(func
     html+='<div class="gcat"><svg class="ic"><use href="#'+s.ic+'"/></svg> '+s.n+' <span class="gcount">'+list.length+' 張</span></div>';
     if(s.d)html+='<div class="gdesc">'+s.d+'</div>';
     html+='<div class="grid">';
-    list.forEach(function(f){var i=PHOTOS.length;PHOTOS.push(f);html+='<a class="gitem" onclick="openLb('+i+')"><img loading="lazy" src="photos/'+f+'" alt="阿東寫真"></a>';});
+    list.forEach(function(f){var i=PHOTOS.length;PHOTOS.push(f);html+='<a class="gitem" onclick="openLb('+i+')"><img loading="lazy" src="'+psrc(f)+'" alt="阿東寫真"></a>';});
     html+='</div>';
   });
   if(PHOTOS.length)g.innerHTML=html;else document.getElementById('empty').style.display='block';
@@ -327,10 +330,10 @@ function buildVault(data){
   var vip=(data.vip||[]);
   // 模糊預覽:優先用 vip 照,沒有就拿公開照當 teaser
   var teaser=(vip.length?vip:[].concat(data.life||[],data.cafe||[],data.soccer||[])).slice(0,3);
-  document.getElementById('vaultPrev').innerHTML=teaser.map(function(f){return '<div class="p"><img src="photos/'+f+'" alt=""><div class="vault-lock"><svg class="ic fill" style="width:22px;height:22px"><use href="#i-lock"/></svg></div></div>';}).join('');
+  document.getElementById('vaultPrev').innerHTML=teaser.map(function(f){return '<div class="p"><img src="'+psrc(f)+'" alt=""><div class="vault-lock"><svg class="ic fill" style="width:22px;height:22px"><use href="#i-lock"/></svg></div></div>';}).join('');
   // 解鎖後的 vip 照(可點大圖)
   var vg=document.getElementById('vipGrid');
-  if(vip.length){vg.innerHTML=vip.map(function(f){var i=PHOTOS.length;PHOTOS.push(f);return '<a class="gitem" onclick="openLb('+i+')"><img loading="lazy" src="photos/'+f+'" alt="阿東高清寫真"></a>';}).join('');}
+  if(vip.length){vg.innerHTML=vip.map(function(f){var i=PHOTOS.length;PHOTOS.push(f);return '<a class="gitem" onclick="openLb('+i+')"><img loading="lazy" src="'+psrc(f)+'" alt="阿東高清寫真"></a>';}).join('');}
   else{vg.innerHTML='<div class="vault-note" style="padding:14px 0">高清寫真陸續更新中，影片先進私密頻道看 ♡</div>';}
   if(localStorage.getItem('adong_vault')==='1')revealVault();
 }
@@ -341,9 +344,9 @@ function tryUnlock(){
   if(v===String(UNLOCK_CODE).trim().toLowerCase()){localStorage.setItem('adong_vault','1');track('unlock_success');m.style.color='var(--gold2)';m.textContent='✓ 解鎖成功！高清內容出現了 ♡';setTimeout(revealVault,600);}
   else{m.style.color='var(--rose2)';m.textContent='解鎖碼不對，抖內或加入夜色後私訊阿東拿碼 ♡';}
 }
-function openLb(i){cur=i;document.getElementById('lbImg').src='photos/'+PHOTOS[i];document.getElementById('lb').classList.add('on');}
+function openLb(i){cur=i;document.getElementById('lbImg').src=psrc(PHOTOS[i]);document.getElementById('lb').classList.add('on');}
 function closeLb(){document.getElementById('lb').classList.remove('on');}
-function lbStep(d){cur=(cur+d+PHOTOS.length)%PHOTOS.length;var im=document.getElementById('lbImg');im.style.animation='none';im.offsetHeight;im.style.animation='';im.src='photos/'+PHOTOS[cur];}
+function lbStep(d){cur=(cur+d+PHOTOS.length)%PHOTOS.length;var im=document.getElementById('lbImg');im.style.animation='none';im.offsetHeight;im.style.animation='';im.src=psrc(PHOTOS[cur]);}
 document.getElementById('lb').addEventListener('click',function(e){if(e.target===this)closeLb();});
 document.addEventListener('keydown',function(e){if(!document.getElementById('lb').classList.contains('on'))return;if(e.key==='Escape')closeLb();if(e.key==='ArrowLeft')lbStep(-1);if(e.key==='ArrowRight')lbStep(1);});
 </script>

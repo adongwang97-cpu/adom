@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>阿東後台管理</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#160610;--card:#241019;--line:rgba(232,192,125,.25);--gold:#e8c07d;--gold2:#f7e4bb;--rose:#ff7a9c;--rose2:#ffb2c4;--tx:#fbeee9;--mut:#a9838c;--danger:#ff5a5a;--ok:#6bdc9c}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC',system-ui,sans-serif;line-height:1.6;min-height:100vh}
+.serif{font-family:'Playfair Display','Noto Sans TC',serif}
+.wrap{max-width:820px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:22px;font-weight:800}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.btn{background:linear-gradient(90deg,var(--rose),var(--gold));border:none;color:#2a0713;font-weight:800;border-radius:12px;padding:10px 18px;cursor:pointer;font-size:14px}
+.btn.gh{background:transparent;border:1px solid var(--line);color:var(--tx);font-weight:600}
+.btn.sm{padding:6px 12px;font-size:12.5px;border-radius:9px}
+.btn.danger{background:var(--danger);color:#fff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+input[type=text],input[type=password],textarea{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--tx);font-size:14px;font-family:inherit}
+textarea{resize:vertical;min-height:52px}
+select{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--tx);font-size:13px}
+#loginBox{max-width:340px;margin:80px auto;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px 24px;text-align:center}
+#loginBox h1{margin-bottom:16px}
+#loginMsg{color:var(--danger);font-size:13px;margin-top:10px;min-height:18px}
+.banner{background:rgba(255,90,90,.12);border:1px solid rgba(255,90,90,.4);border-radius:12px;padding:12px 14px;font-size:13px;margin-bottom:16px;line-height:1.7}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+.panel h2{font-size:16px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sec{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.sec-h{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.sec-h .name{font-weight:800;font-size:15px;flex:1}
+.sec-actions{display:flex;gap:6px}
+.iconbtn{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--tx);border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.savehint{font-size:11.5px;color:var(--ok);margin-left:6px;opacity:0;transition:opacity .3s}
+.savehint.show{opacity:1}
+.pgrid{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.pitem{position:relative;width:88px;height:118px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.pitem img{width:100%;height:100%;object-fit:cover;display:block}
+.pitem .del{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer}
+.pitem .mv{position:absolute;bottom:3px;display:flex;gap:2px;left:3px;right:3px;justify-content:center}
+.pitem .mv button{background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:5px;width:20px;height:18px;font-size:10px;cursor:pointer}
+.uploadRow{margin-top:10px;display:flex;align-items:center;gap:10px}
+.uploadRow input[type=file]{font-size:12px;color:var(--mut)}
+.progress{font-size:12px;color:var(--gold2)}
+.newsec{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.newsec .full{grid-column:1/-1}
+.themeRow{display:flex;gap:10px;flex-wrap:wrap}
+.themeCard{border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer;font-size:13px}
+.themeCard.active{border-color:var(--gold);background:rgba(232,192,125,.1)}
+.dim{color:var(--mut);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="loginBox">
+    <h1 class="serif">阿東後台</h1>
+    <input type="password" id="pw" placeholder="輸入後台密碼" autocomplete="current-password">
+    <div style="height:10px"></div>
+    <button class="btn" style="width:100%" onclick="doLogin()">登入</button>
+    <div id="loginMsg"></div>
+  </div>
+
+  <div id="dashboard" style="display:none">
+    <div class="top">
+      <h1 class="serif">阿東後台</h1>
+      <div><a class="btn gh sm" href="/" target="_blank" style="text-decoration:none;display:inline-block;margin-right:8px">看網站 →</a><button class="btn gh sm" onclick="doLogout()">登出</button></div>
+    </div>
+
+    <div id="statusBanner"></div>
+
+    <div class="panel">
+      <h2>🎨 前端風格</h2>
+      <div class="themeRow" id="themeRow"></div>
+      <div class="dim" style="margin-top:8px">目前只有玫瑰金 Glam 一套；要再開發新風格（暗夜/粉紫/極簡）跟阿東說一聲即可加。</div>
+    </div>
+
+    <div class="panel">
+      <h2>➕ 新增相簿分類</h2>
+      <div class="newsec">
+        <input type="text" id="newK" placeholder="代碼(英文,如 travel)">
+        <input type="text" id="newN" placeholder="顯示名稱(如 旅行系列)">
+        <select id="newIc">
+          <option value="i-cam">📷 相機</option>
+          <option value="i-heart">♡ 愛心</option>
+          <option value="i-bolt">⚡ 閃電</option>
+          <option value="i-spark">✦ 星芒</option>
+          <option value="i-dice">🎲 骰子</option>
+        </select>
+        <input type="text" class="full" id="newD" placeholder="這系列的故事文案(可留空之後再補)">
+      </div>
+      <div style="height:10px"></div>
+      <button class="btn sm" onclick="addSection()">新增分類</button>
+    </div>
+
+    <div id="sections"></div>
+  </div>
+</div>
+
+<script>
+var STATE={authed:false,r2:false,kv:false,data:null};
+
+function api(path,opts){
+  opts=opts||{};
+  return fetch(path,Object.assign({credentials:'same-origin',headers:{'content-type':'application/json'}},opts))
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok,status:r.status,data:d};});});
+}
+
+function doLogin(){
+  var pw=document.getElementById('pw').value;
+  api('/api/admin/login',{method:'POST',body:JSON.stringify({password:pw})}).then(function(res){
+    if(res.ok){init();}
+    else{document.getElementById('loginMsg').textContent=res.data.error==='admin_not_configured'?'後台尚未設定(缺 ADMIN_PASS/ADMIN_SECRET)':'密碼錯誤';}
+  });
+}
+function doLogout(){api('/api/admin/logout',{method:'POST'}).then(function(){location.reload();});}
+
+function init(){
+  api('/api/admin/check').then(function(res){
+    STATE.authed=res.data.authed; STATE.r2=res.data.r2; STATE.kv=res.data.kv; STATE.configured=res.data.configured;
+    if(!STATE.authed){document.getElementById('loginBox').style.display='block';document.getElementById('dashboard').style.display='none';return;}
+    document.getElementById('loginBox').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    renderBanner();
+    loadData();
+  });
+}
+
+function renderBanner(){
+  var b=document.getElementById('statusBanner'),msgs=[];
+  if(!STATE.kv)msgs.push('尚未綁定 KV(SITE_KV)：分類文案/排序/新增分類 無法儲存');
+  if(!STATE.r2)msgs.push('尚未綁定 R2(PHOTOS)：無法上傳新圖片');
+  b.innerHTML=msgs.length?('<div class="banner">⚠️ '+msgs.join('　·　')+'<br><span class="dim">去 CF 儀表板 → adom → Settings → Bindings 加好，回來重整這頁即可。</span></div>'):'';
+}
+
+function loadData(){
+  api('/api/admin/data').then(function(res){
+    if(!res.ok){return;}
+    STATE.data=res.data;
+    renderTheme();
+    renderSections();
+  });
+}
+
+function renderTheme(){
+  var themes=[{k:'glam',n:'玫瑰金 Glam'}];
+  var row=document.getElementById('themeRow');
+  row.innerHTML=themes.map(function(t){return '<div class="themeCard'+(STATE.data.theme===t.k?' active':'')+'" onclick="setTheme(\''+t.k+'\')">'+t.n+'</div>';}).join('');
+}
+function setTheme(k){api('/api/admin/theme',{method:'POST',body:JSON.stringify({theme:k})}).then(function(){STATE.data.theme=k;renderTheme();});}
+
+function psrc(f){ return f.indexOf('r2/')===0 ? '/photos/r2/'+f.slice(3) : '/photos/'+f; }
+
+function renderSections(){
+  var el=document.getElementById('sections');
+  var secs=STATE.data.sections||[];
+  el.innerHTML=secs.map(function(s,idx){
+    var photos=(STATE.data.photos[s.k]||[]);
+    return '<div class="sec" data-k="'+s.k+'">'+
+      '<div class="sec-h">'+
+        '<div class="name">'+esc(s.n)+' <span class="dim">('+s.k+' · '+photos.length+' 張)</span></div>'+
+        '<div class="sec-actions">'+
+          '<button class="iconbtn" title="上移" onclick="moveSection(\''+s.k+'\',-1)">↑</button>'+
+          '<button class="iconbtn" title="下移" onclick="moveSection(\''+s.k+'\',1)">↓</button>'+
+          '<button class="iconbtn" title="刪除整個分類" onclick="deleteSection(\''+s.k+'\')" style="color:var(--danger)">✕</button>'+
+        '</div>'+
+      '</div>'+
+      '<textarea placeholder="這個系列的故事文案…" onblur="saveStory(\''+s.k+'\',this)" oninput="hintSave(this)">'+esc(s.d||'')+'</textarea>'+
+      '<span class="savehint">✓ 已儲存</span>'+
+      '<div class="pgrid" id="grid-'+s.k+'">'+photos.map(function(f,i){return photoItem(s.k,f,i,photos.length);}).join('')+'</div>'+
+      '<div class="uploadRow">'+
+        '<input type="file" accept="image/*" multiple onchange="uploadFiles(\''+s.k+'\',this)">'+
+        '<span class="progress" id="prog-'+s.k+'"></span>'+
+      '</div>'+
+    '</div>';
+  }).join('')||'<div class="dim">尚無分類</div>';
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function photoItem(cat,f,i,total){
+  return '<div class="pitem"><img src="'+psrc(f)+'" alt="">'+
+    '<button class="del" onclick="deletePhoto(\''+cat+'\',\''+f.replace(/'/g,"\\'")+'\')">✕</button>'+
+    '<div class="mv">'+(i>0?'<button onclick="movePhoto(\''+cat+'\','+i+',-1)">←</button>':'')+(i<total-1?'<button onclick="movePhoto(\''+cat+'\','+i+',1)">→</button>':'')+'</div>'+
+  '</div>';
+}
+
+function hintSave(ta){ta.dataset.dirty='1';}
+function saveStory(cat,ta){
+  api('/api/admin/story',{method:'POST',body:JSON.stringify({cat:cat,text:ta.value})}).then(function(res){
+    if(res.ok){var h=ta.nextElementSibling;h.classList.add('show');setTimeout(function(){h.classList.remove('show');},1600);
+      var s=STATE.data.sections.find(function(x){return x.k===cat;}); if(s)s.d=ta.value;}
+  });
+}
+
+function moveSection(k,dir){
+  var secs=STATE.data.sections; var i=secs.findIndex(function(s){return s.k===k;});
+  var j=i+dir; if(j<0||j>=secs.length)return;
+  var tmp=secs[i];secs[i]=secs[j];secs[j]=tmp;
+  api('/api/admin/section/order',{method:'POST',body:JSON.stringify({order:secs.map(function(s){return s.k;})})}).then(function(){renderSections();});
+}
+function deleteSection(k){
+  if(!confirm('確定刪除整個分類「'+k+'」？(裡面的圖片不會刪，只是不再顯示)'))return;
+  api('/api/admin/section/delete',{method:'POST',body:JSON.stringify({k:k})}).then(function(){
+    STATE.data.sections=STATE.data.sections.filter(function(s){return s.k!==k;});renderSections();
+  });
+}
+function addSection(){
+  var k=(document.getElementById('newK').value||'').trim().toLowerCase().replace(/[^a-z0-9-]/g,'');
+  var n=(document.getElementById('newN').value||'').trim();
+  var ic=document.getElementById('newIc').value;
+  var d=(document.getElementById('newD').value||'').trim();
+  if(!k||!n){alert('代碼跟顯示名稱都要填');return;}
+  api('/api/admin/section',{method:'POST',body:JSON.stringify({k:k,n:n,ic:ic,d:d})}).then(function(res){
+    if(res.ok){document.getElementById('newK').value='';document.getElementById('newN').value='';document.getElementById('newD').value='';loadData();}
+    else alert('新增失敗：'+(res.data.hint||res.data.error||''));
+  });
+}
+
+function deletePhoto(cat,f){
+  if(!confirm('確定刪除這張圖？'))return;
+  api('/api/admin/photo/delete',{method:'POST',body:JSON.stringify({cat:cat,file:f})}).then(function(){loadData();});
+}
+function movePhoto(cat,i,dir){
+  var list=STATE.data.photos[cat].slice();
+  var j=i+dir; if(j<0||j>=list.length)return;
+  var tmp=list[i];list[i]=list[j];list[j]=tmp;
+  api('/api/admin/photo/order',{method:'POST',body:JSON.stringify({cat:cat,order:list})}).then(function(){STATE.data.photos[cat]=list;renderSections();});
+}
+
+// ── 上傳：選圖 → 瀏覽器自動轉 webp(不用另外裝軟體) → 傳給後台存 R2 ──
+function toWebp(file,maxDim){
+  return new Promise(function(resolve,reject){
+    var img=new Image();
+    var url=URL.createObjectURL(file);
+    img.onload=function(){
+      URL.revokeObjectURL(url);
+      var w=img.naturalWidth,h=img.naturalHeight;
+      var scale=Math.min(1,maxDim/Math.max(w,h));
+      var cw=Math.round(w*scale),ch=Math.round(h*scale);
+      var cv=document.createElement('canvas');cv.width=cw;cv.height=ch;
+      cv.getContext('2d').drawImage(img,0,0,cw,ch);
+      cv.toBlob(function(blob){blob?resolve(blob):reject(new Error('convert_failed'));},'image/webp',0.86);
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);reject(new Error('load_failed'));};
+    img.src=url;
+  });
+}
+function uploadFiles(cat,input){
+  var files=Array.prototype.slice.call(input.files||[]);
+  if(!files.length)return;
+  if(!STATE.r2){alert('尚未綁定 R2，無法上傳。');input.value='';return;}
+  var prog=document.getElementById('prog-'+cat);
+  var done=0,total=files.length;
+  prog.textContent='轉檔上傳中 0/'+total;
+  (function next(i){
+    if(i>=files.length){prog.textContent='✓ 完成 '+total+' 張';input.value='';setTimeout(function(){loadData();},400);return;}
+    var f=files[i];
+    toWebp(f,1800).then(function(blob){
+      var name=(f.name||'photo').replace(/\.[a-z0-9]+$/i,'')+'.webp';
+      return fetch('/api/admin/upload?cat='+encodeURIComponent(cat)+'&name='+encodeURIComponent(name),{method:'POST',body:blob,credentials:'same-origin'});
+    }).then(function(r){return r.json();}).then(function(){done++;prog.textContent='轉檔上傳中 '+done+'/'+total;next(i+1);})
+    .catch(function(){done++;prog.textContent='轉檔上傳中 '+done+'/'+total+'(1張失敗)';next(i+1);});
+  })(0);
+}
+
+document.getElementById('pw').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+init();
+</script>
+</body>
+</html>
