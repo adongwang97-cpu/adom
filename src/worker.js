@@ -85,9 +85,9 @@ async function tgSendToChannel(env, origin, caption, photoFile) {
 
 // ── 阿東專屬互動 bot：只認這個 TG 數字 ID，別人傳訊息完全不回應(避免暴露管理面) ──
 const ADMIN_TG_ID = '8747632846';   // 阿東(Jacky)自己的 TG 帳號
-const SITE_URL = 'https://adom.adongwang97.workers.dev/';
+const SITE_URL = 'https://adom.adongwang97.workers.dev/admin/';   // 這支bot只有你自己能用，快速鍵直接進後台管理
 const ADMIN_KB = { keyboard: [
-  [{ text: '🌐 開啟阿東寫真站', web_app: { url: SITE_URL } }],
+  [{ text: '🛠 開啟後台管理', web_app: { url: SITE_URL } }],
   [{ text: '📢 立即發送排程文案' }, { text: '📊 頻道概況' }],
 ], resize_keyboard: true, is_persistent: true };
 
