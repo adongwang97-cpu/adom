@@ -43,9 +43,6 @@ select{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px
 .pitem .del{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer}
 .pitem .mv{position:absolute;bottom:3px;display:flex;gap:2px;left:3px;right:3px;justify-content:center}
 .pitem .mv button{background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:5px;width:20px;height:18px;font-size:10px;cursor:pointer}
-.uploadRow{margin-top:10px;display:flex;align-items:center;gap:10px}
-.uploadRow input[type=file]{font-size:12px;color:var(--mut)}
-.progress{font-size:12px;color:var(--gold2)}
 .newsec{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .newsec .full{grid-column:1/-1}
 .themeRow{display:flex;gap:10px;flex-wrap:wrap}
@@ -71,6 +68,11 @@ select{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px
     </div>
 
     <div id="statusBanner"></div>
+
+    <div class="panel">
+      <h2>📷 怎麼加新照片</h2>
+      <div class="dim">這個後台管「文案／排序／刪除／分類」，照片檔案本身跟以前一樣 git push 進 photos/ 資料夾（我幫你轉webp、加好分類前綴），推上去之後這裡就會自動出現，可以再排序/寫文案。</div>
+    </div>
 
     <div class="panel">
       <h2>🎨 前端風格</h2>
@@ -101,7 +103,7 @@ select{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px
 </div>
 
 <script>
-var STATE={authed:false,r2:false,kv:false,data:null};
+var STATE={authed:false,db:false,data:null};
 
 function api(path,opts){
   opts=opts||{};
@@ -120,7 +122,7 @@ function doLogout(){api('/api/admin/logout',{method:'POST'}).then(function(){loc
 
 function init(){
   api('/api/admin/check').then(function(res){
-    STATE.authed=res.data.authed; STATE.r2=res.data.r2; STATE.kv=res.data.kv; STATE.configured=res.data.configured;
+    STATE.authed=res.data.authed; STATE.db=res.data.db; STATE.configured=res.data.configured;
     if(!STATE.authed){document.getElementById('loginBox').style.display='block';document.getElementById('dashboard').style.display='none';return;}
     document.getElementById('loginBox').style.display='none';
     document.getElementById('dashboard').style.display='block';
@@ -130,10 +132,8 @@ function init(){
 }
 
 function renderBanner(){
-  var b=document.getElementById('statusBanner'),msgs=[];
-  if(!STATE.kv)msgs.push('尚未綁定 KV(SITE_KV)：分類文案/排序/新增分類 無法儲存');
-  if(!STATE.r2)msgs.push('尚未綁定 R2(PHOTOS)：無法上傳新圖片');
-  b.innerHTML=msgs.length?('<div class="banner">⚠️ '+msgs.join('　·　')+'<br><span class="dim">去 CF 儀表板 → adom → Settings → Bindings 加好，回來重整這頁即可。</span></div>'):'';
+  var b=document.getElementById('statusBanner');
+  b.innerHTML=!STATE.db?('<div class="banner">⚠️ 尚未綁定 D1(binding名稱=DB)：分類文案/排序/新增分類/抖內都無法儲存<br><span class="dim">去 CF 儀表板 → adom → Settings → Bindings 加好，回來重整這頁即可。</span></div>'):'';
 }
 
 function loadData(){
@@ -152,7 +152,7 @@ function renderTheme(){
 }
 function setTheme(k){api('/api/admin/theme',{method:'POST',body:JSON.stringify({theme:k})}).then(function(){STATE.data.theme=k;renderTheme();});}
 
-function psrc(f){ return f.indexOf('r2/')===0 ? '/photos/r2/'+f.slice(3) : '/photos/'+f; }
+function psrc(f){ return '/photos/'+f; }
 
 function renderSections(){
   var el=document.getElementById('sections');
@@ -171,10 +171,6 @@ function renderSections(){
       '<textarea placeholder="這個系列的故事文案…" onblur="saveStory(\''+s.k+'\',this)" oninput="hintSave(this)">'+esc(s.d||'')+'</textarea>'+
       '<span class="savehint">✓ 已儲存</span>'+
       '<div class="pgrid" id="grid-'+s.k+'">'+photos.map(function(f,i){return photoItem(s.k,f,i,photos.length);}).join('')+'</div>'+
-      '<div class="uploadRow">'+
-        '<input type="file" accept="image/*" multiple onchange="uploadFiles(\''+s.k+'\',this)">'+
-        '<span class="progress" id="prog-'+s.k+'"></span>'+
-      '</div>'+
     '</div>';
   }).join('')||'<div class="dim">尚無分類</div>';
 }
@@ -227,42 +223,6 @@ function movePhoto(cat,i,dir){
   var j=i+dir; if(j<0||j>=list.length)return;
   var tmp=list[i];list[i]=list[j];list[j]=tmp;
   api('/api/admin/photo/order',{method:'POST',body:JSON.stringify({cat:cat,order:list})}).then(function(){STATE.data.photos[cat]=list;renderSections();});
-}
-
-// ── 上傳：選圖 → 瀏覽器自動轉 webp(不用另外裝軟體) → 傳給後台存 R2 ──
-function toWebp(file,maxDim){
-  return new Promise(function(resolve,reject){
-    var img=new Image();
-    var url=URL.createObjectURL(file);
-    img.onload=function(){
-      URL.revokeObjectURL(url);
-      var w=img.naturalWidth,h=img.naturalHeight;
-      var scale=Math.min(1,maxDim/Math.max(w,h));
-      var cw=Math.round(w*scale),ch=Math.round(h*scale);
-      var cv=document.createElement('canvas');cv.width=cw;cv.height=ch;
-      cv.getContext('2d').drawImage(img,0,0,cw,ch);
-      cv.toBlob(function(blob){blob?resolve(blob):reject(new Error('convert_failed'));},'image/webp',0.86);
-    };
-    img.onerror=function(){URL.revokeObjectURL(url);reject(new Error('load_failed'));};
-    img.src=url;
-  });
-}
-function uploadFiles(cat,input){
-  var files=Array.prototype.slice.call(input.files||[]);
-  if(!files.length)return;
-  if(!STATE.r2){alert('尚未綁定 R2，無法上傳。');input.value='';return;}
-  var prog=document.getElementById('prog-'+cat);
-  var done=0,total=files.length;
-  prog.textContent='轉檔上傳中 0/'+total;
-  (function next(i){
-    if(i>=files.length){prog.textContent='✓ 完成 '+total+' 張';input.value='';setTimeout(function(){loadData();},400);return;}
-    var f=files[i];
-    toWebp(f,1800).then(function(blob){
-      var name=(f.name||'photo').replace(/\.[a-z0-9]+$/i,'')+'.webp';
-      return fetch('/api/admin/upload?cat='+encodeURIComponent(cat)+'&name='+encodeURIComponent(name),{method:'POST',body:blob,credentials:'same-origin'});
-    }).then(function(r){return r.json();}).then(function(){done++;prog.textContent='轉檔上傳中 '+done+'/'+total;next(i+1);})
-    .catch(function(){done++;prog.textContent='轉檔上傳中 '+done+'/'+total+'(1張失敗)';next(i+1);});
-  })(0);
 }
 
 document.getElementById('pw').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});

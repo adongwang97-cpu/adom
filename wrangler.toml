@@ -6,7 +6,6 @@ compatibility_date = "2024-09-23"
 directory = "./"
 binding = "ASSETS"
 
-# ── 以下兩個綁定要在 CF 儀表板手動加(見 使用說明.txt「後台設定」章節)──
-# R2 儲存桶 → binding 名稱填 PHOTOS
-# KV 命名空間 → binding 名稱填 SITE_KV
-# Secrets → ADMIN_PASS(後台密碼) / ADMIN_SECRET(簽章用亂碼,不用記)
+# ── 以下要在 CF 儀表板手動加(見 使用說明.txt「後台設定」章節)──
+# D1 資料庫 → binding 名稱填 DB(建好+綁定後，第一次請求會自動建表，不用手動貼 SQL)
+# Secrets → ADMIN_PASS(後台密碼) / ADMIN_SECRET(簽章用亂碼,不用記) / OXAPAY_API_KEY(抖內金流，阿東專屬)

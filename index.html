@@ -401,7 +401,7 @@ document.querySelectorAll('.rise').forEach(function(el){io.observe(el);});
 // ===== 相簿：讀 /api/photos.json（後台可管理，分類/文案/圖片都是動態的）=====
 var PHOTOS=[],cur=0;
 // r2/ 開頭 = 後台上傳的圖(走 R2 代理)；其餘 = git 內建的靜態圖
-function psrc(f){ return f.indexOf('r2/')===0 ? '/photos/r2/'+f.slice(3) : 'photos/'+f; }
+function psrc(f){ return 'photos/'+f; }
 // 沒有後端/API 打不通時的保底文案(跟後台預設一致，不會開天窗)
 var FALLBACK_SECTIONS=[
  {k:'soccer',n:'世足賽系列',ic:'i-bolt',d:'跟著世界盃一起瘋 —— 球場邊最亮的那個就是我，穿上球衣為我的主隊尖叫 ⚽'},

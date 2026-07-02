@@ -1,15 +1,13 @@
 /**
- * 阿東寫真站 — 後台 Worker
+ * 阿東寫真站 — 後台 Worker（D1 版，不做圖片上傳；圖片仍靠 git push 進 photos/）
  * 公開路由：
- *   GET  /api/photos.json        合併「git 內建照片」+「後台上傳照片」給前台用
- *   GET  /photos/r2/:key         從 R2 讀出上傳的圖(對外服務)
- * 後台路由（需登入,密碼比對 env.ADMIN_PASS）：
+ *   GET  /api/photos.json        合併「git 內建照片」+ D1 排序/刪除狀態，給前台用
+ * 後台路由（需登入，密碼比對 env.ADMIN_PASS）：
  *   POST /api/admin/login        {password} → 設簽章 cookie
  *   POST /api/admin/logout
- *   GET  /api/admin/check        目前是否已登入 + R2/KV 是否已綁定
- *   GET  /api/admin/data         後台編輯用的完整資料(含所有分類/照片/文案)
- *   POST /api/admin/upload       body=webp二進位, ?cat=xxx&name=xxx.webp
- *   POST /api/admin/photo/delete {cat, file}
+ *   GET  /api/admin/check        目前是否已登入 + D1 是否已綁定
+ *   GET  /api/admin/data         後台編輯用的完整資料(所有分類/照片/文案)
+ *   POST /api/admin/photo/delete {cat, file}   軟刪除(不動 git 檔案，只是不顯示)
  *   POST /api/admin/photo/order  {cat, order:[filename,...]}
  *   POST /api/admin/story        {cat, text}
  *   POST /api/admin/section      新增/更新分類 {k, n, ic, d}
@@ -20,8 +18,11 @@
  *   POST /api/donate/create      {tier, name} → 建發票，回 pay_url
  *   POST /api/donate/webhook     OxaPay 付款完成回調（header HMAC 簽章）
  *   GET  /api/donate/status      ?order=xxx → 感謝頁輪詢用
- *   GET  /api/supporters         公開，感謝牆用（最近抖內暱稱，不含金額細節）
+ *   GET  /api/supporters         公開，感謝牆用（最近抖內暱稱，來自 donations 表）
  * 其餘 → 靜態檔(env.ASSETS)
+ *
+ * 需要的 CF 綁定：D1(binding名稱=DB) + Secrets(ADMIN_PASS/ADMIN_SECRET/OXAPAY_API_KEY)
+ * 表格首次使用自動建立(CREATE TABLE IF NOT EXISTS)，不用手動貼 SQL。
  */
 
 const COOKIE_NAME = 'admin_session';
@@ -73,20 +74,41 @@ async function requireAdmin(request, env) {
   return !!(p && p.admin);
 }
 
-// ── KV site_config 讀寫（沒綁 KV 時回預設值，不炸站）──
-async function getConfig(env) {
-  const def = { stories: {}, uploads: {}, deleted: [], order: {}, sections: DEFAULT_SECTIONS, secOrder: null, theme: 'glam' };
-  if (!env.SITE_KV) return def;
+// ── D1：首次使用自動建表，不用手動貼 SQL ──
+let schemaReady = false;
+async function ensureSchema(env) {
+  if (!env.DB || schemaReady) return;
+  const stmts = [
+    `CREATE TABLE IF NOT EXISTS sections (k TEXT PRIMARY KEY, n TEXT NOT NULL, ic TEXT NOT NULL DEFAULT 'i-cam', d TEXT DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS photo_state (cat TEXT NOT NULL, file TEXT NOT NULL, sort_order INTEGER, deleted INTEGER DEFAULT 0, PRIMARY KEY (cat, file))`,
+    `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
+    `CREATE TABLE IF NOT EXISTS donations (order_id TEXT PRIMARY KEY, tier TEXT NOT NULL, name TEXT, amount REAL NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now')), paid_at TEXT)`,
+  ];
   try {
-    const raw = await env.SITE_KV.get('site_config');
-    if (!raw) return def;
-    const c = JSON.parse(raw);
-    return Object.assign({}, def, c, { sections: (c.sections && c.sections.length) ? c.sections : DEFAULT_SECTIONS });
-  } catch { return def; }
+    for (const s of stmts) await env.DB.prepare(s).run();
+    schemaReady = true;
+  } catch { /* 下次請求再試 */ }
 }
-async function saveConfig(env, cfg) { if (env.SITE_KV) await env.SITE_KV.put('site_config', JSON.stringify(cfg)); }
 
-// ── 讀 git 內建的靜態 photos.json（作為每個分類的「原始」照片清單）──
+async function getSetting(env, key, def) {
+  if (!env.DB) return def;
+  try { const r = await env.DB.prepare('SELECT value FROM settings WHERE key=?').bind(key).first(); return r ? r.value : def; } catch { return def; }
+}
+async function setSetting(env, key, value) {
+  if (!env.DB) return;
+  await env.DB.prepare("INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key, value).run();
+}
+
+async function getSections(env) {
+  if (!env.DB) return DEFAULT_SECTIONS;
+  try {
+    const { results } = await env.DB.prepare('SELECT k,n,ic,d FROM sections ORDER BY sort_order ASC, rowid ASC').all();
+    if (results && results.length) return results;
+  } catch { /* fall through */ }
+  return DEFAULT_SECTIONS;
+}
+
+// ── 讀 git 內建的靜態 photos.json（每個分類的「原始」照片清單，圖片本身仍由 git push 管理）──
 async function getStaticPhotos(request, env) {
   try {
     const r = await env.ASSETS.fetch(new Request(new URL('/photos.json', request.url), { method: 'GET' }));
@@ -95,33 +117,32 @@ async function getStaticPhotos(request, env) {
   } catch { return {}; }
 }
 
-// ── 合併靜態 + 後台上傳 + 排序 + 已刪除，產出前台/後台都能用的完整資料 ──
+// ── 合併靜態照片 + D1 排序/刪除狀態，產出前台/後台都能用的完整資料 ──
 async function buildMerged(request, env) {
-  const [staticPhotos, cfg] = await Promise.all([getStaticPhotos(request, env), getConfig(env)]);
-  const deleted = new Set(cfg.deleted || []);
-  const allKeys = new Set([...Object.keys(staticPhotos), ...Object.keys(cfg.uploads || {})]);
+  const [staticPhotos, sections] = await Promise.all([getStaticPhotos(request, env), getSections(env)]);
+  let stateRows = [];
+  if (env.DB) {
+    try { stateRows = (await env.DB.prepare('SELECT cat, file, sort_order, deleted FROM photo_state').all()).results || []; } catch { /* ignore */ }
+  }
+  const byCat = {};
+  for (const r of stateRows) { (byCat[r.cat] = byCat[r.cat] || []).push(r); }
+
   const photos = {};
-  for (const k of allKeys) {
-    const base = (staticPhotos[k] || []).filter(f => !deleted.has(f));
-    const up = (cfg.uploads[k] || []).filter(f => !deleted.has(f));
-    let merged = [...base, ...up];
-    const order = (cfg.order || {})[k];
-    if (order && order.length) {
-      const set = new Set(merged);
-      const ordered = order.filter(f => set.has(f));
-      const rest = merged.filter(f => !order.includes(f));
-      merged = [...ordered, ...rest];
+  for (const k of Object.keys(staticPhotos)) {
+    const state = byCat[k] || [];
+    const deleted = new Set(state.filter(r => r.deleted).map(r => r.file));
+    const orderMap = new Map(state.filter(r => r.sort_order != null).map(r => [r.file, r.sort_order]));
+    let list = (staticPhotos[k] || []).filter(f => !deleted.has(f));
+    if (orderMap.size) {
+      list = list.slice().sort((a, b) => {
+        const oa = orderMap.has(a) ? orderMap.get(a) : 9999, ob = orderMap.has(b) ? orderMap.get(b) : 9999;
+        return oa - ob;
+      });
     }
-    if (merged.length) photos[k] = merged;
+    if (list.length) photos[k] = list;
   }
-  let sections = cfg.sections || DEFAULT_SECTIONS;
-  if (cfg.secOrder && cfg.secOrder.length) {
-    const map = new Map(sections.map(s => [s.k, s]));
-    const ordered = cfg.secOrder.filter(k => map.has(k)).map(k => map.get(k));
-    const rest = sections.filter(s => !cfg.secOrder.includes(s.k));
-    sections = [...ordered, ...rest];
-  }
-  return { photos, sections, theme: cfg.theme || 'glam', cfg };
+  const theme = await getSetting(env, 'theme', 'glam');
+  return { photos, sections, theme };
 }
 
 function sanitizeKey(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24); }
@@ -150,14 +171,12 @@ async function oxaVerifySign(rawBody, headerSig, apiKey) {
 }
 const OXA_PAID = new Set(['Paid', 'paid']);
 
-async function kvGetJSON(env, key, def) { if (!env.SITE_KV) return def; try { const raw = await env.SITE_KV.get(key); return raw ? JSON.parse(raw) : def; } catch { return def; } }
-async function kvPutJSON(env, key, val) { if (env.SITE_KV) await env.SITE_KV.put(key, JSON.stringify(val)); }
-
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const p = url.pathname;
     const method = request.method;
+    await ensureSchema(env);
 
     try {
       // ── 公開：前台合併資料 ──
@@ -166,18 +185,10 @@ export default {
         return json({ ...photos, __sections: sections, __theme: theme });
       }
 
-      // ── 公開：R2 圖片代理 ──
-      if (p.startsWith('/photos/r2/') && method === 'GET') {
-        if (!env.PHOTOS) return new Response('not configured', { status: 503 });
-        const key = decodeURIComponent(p.slice('/photos/r2/'.length));
-        const obj = await env.PHOTOS.get(key);
-        if (!obj) return new Response('not found', { status: 404 });
-        return new Response(obj.body, { headers: { 'content-type': 'image/webp', 'cache-control': 'public, max-age=31536000, immutable' } });
-      }
-
       // ── 公開：抖內三階 → 建 OxaPay 發票 ──
       if (p === '/api/donate/create' && method === 'POST') {
         if (!env.OXAPAY_API_KEY) return json({ error: 'gateway_not_configured', hint: '尚未設定 OXAPAY_API_KEY(阿東自己的商戶key，不可跟 picks168 共用)' }, 503);
+        if (!env.DB) return json({ error: 'db_not_bound', hint: '請先在 CF 綁定 D1(binding名稱=DB)' }, 503);
         const body = await request.json().catch(() => ({}));
         const tierKey = sanitizeKey(body.tier);
         const tier = DONATE_TIERS[tierKey];
@@ -192,29 +203,21 @@ export default {
           description: `阿東抖內・${tier.n}`,
         });
         if (!inv.ok || !inv.pay_url) return json({ error: 'invoice_failed', raw: inv.raw }, 502);
-        await kvPutJSON(env, `don:${order_id}`, { tier: tierKey, name, amount: tier.usd, status: 'pending', created_at: Date.now() });
+        await env.DB.prepare('INSERT INTO donations (order_id, tier, name, amount, status) VALUES (?,?,?,?,\'pending\')')
+          .bind(order_id, tierKey, name, tier.usd).run();
         return json({ ok: true, order_id, pay_url: inv.pay_url });
       }
 
       // ── 公開：OxaPay webhook（付款完成回調）──
       if (p === '/api/donate/webhook' && method === 'POST') {
-        if (!env.OXAPAY_API_KEY) return new Response('not_configured', { status: 503 });
+        if (!env.OXAPAY_API_KEY || !env.DB) return new Response('not_configured', { status: 503 });
         const raw = await request.text();
         const sig = request.headers.get('HMAC') || request.headers.get('hmac');
         if (!(await oxaVerifySign(raw, sig, env.OXAPAY_API_KEY))) return new Response('bad_sign', { status: 401 });
         let data; try { data = JSON.parse(raw); } catch { return new Response('bad_json', { status: 400 }); }
         const orderId = data.order_id || '';
         if (orderId && OXA_PAID.has(data.status)) {
-          const rec = await kvGetJSON(env, `don:${orderId}`, null);
-          if (rec && rec.status !== 'paid') {
-            rec.status = 'paid'; rec.paid_at = Date.now();
-            await kvPutJSON(env, `don:${orderId}`, rec);
-            if (rec.name) {
-              const list = await kvGetJSON(env, 'supporters', []);
-              list.unshift({ name: rec.name, tier: rec.tier, ts: Date.now() });
-              await kvPutJSON(env, 'supporters', list.slice(0, 50));
-            }
-          }
+          await env.DB.prepare("UPDATE donations SET status='paid', paid_at=datetime('now') WHERE order_id=? AND status!='paid'").bind(orderId).run();
         }
         return new Response('OK', { status: 200 });
       }
@@ -222,15 +225,19 @@ export default {
       // ── 公開：感謝頁輪詢付款狀態 ──
       if (p === '/api/donate/status' && method === 'GET') {
         const order = url.searchParams.get('order') || '';
-        const rec = await kvGetJSON(env, `don:${order}`, null);
+        if (!env.DB) return json({ status: 'unknown' });
+        const rec = await env.DB.prepare('SELECT status, tier FROM donations WHERE order_id=?').bind(order).first().catch(() => null);
         if (!rec) return json({ status: 'unknown' });
         return json({ status: rec.status, tier: rec.tier });
       }
 
-      // ── 公開：感謝牆 ──
+      // ── 公開：感謝牆(來自已付款的抖內紀錄) ──
       if (p === '/api/supporters' && method === 'GET') {
-        const list = await kvGetJSON(env, 'supporters', []);
-        return json({ list: list.slice(0, 20) });
+        if (!env.DB) return json({ list: [] });
+        const { results } = await env.DB.prepare(
+          "SELECT name, tier, paid_at FROM donations WHERE status='paid' AND name IS NOT NULL AND name!='' ORDER BY paid_at DESC LIMIT 20"
+        ).all().catch(() => ({ results: [] }));
+        return json({ list: (results || []).map(r => ({ name: r.name, tier: r.tier, ts: r.paid_at })) });
       }
 
       // ── 後台：登入 ──
@@ -246,7 +253,7 @@ export default {
       }
       if (p === '/api/admin/check' && method === 'GET') {
         const ok = await requireAdmin(request, env);
-        return json({ authed: ok, r2: !!env.PHOTOS, kv: !!env.SITE_KV, configured: !!(env.ADMIN_PASS && env.ADMIN_SECRET) });
+        return json({ authed: ok, db: !!env.DB, configured: !!(env.ADMIN_PASS && env.ADMIN_SECRET) });
       }
 
       // ── 以下都要登入 ──
@@ -256,107 +263,73 @@ export default {
 
         if (p === '/api/admin/data' && method === 'GET') {
           const { photos, sections } = await buildMerged(request, env);
-          const cfg = await getConfig(env);
-          return json({ photos, sections, stories: cfg.stories || {}, theme: cfg.theme || 'glam' });
-        }
-
-        if (p === '/api/admin/upload' && method === 'POST') {
-          if (!env.PHOTOS) return json({ error: 'r2_not_bound', hint: '請先在 CF 綁定 R2(binding名稱=PHOTOS)' }, 503);
-          const cat = sanitizeKey(url.searchParams.get('cat'));
-          let name = (url.searchParams.get('name') || 'photo.webp').replace(/[^\w.-]/g, '_');
-          if (!/\.webp$/i.test(name)) name += '.webp';
-          if (!cat) return json({ error: 'missing_cat' }, 400);
-          const buf = await request.arrayBuffer();
-          if (buf.byteLength > 9 * 1024 * 1024) return json({ error: 'too_large' }, 413);
-          if (buf.byteLength < 100) return json({ error: 'empty_file' }, 400);
-          const key = `${cat}/${Date.now()}-${name}`;
-          await env.PHOTOS.put(key, buf, { httpMetadata: { contentType: 'image/webp' } });
-          const cfg = await getConfig(env);
-          cfg.uploads = cfg.uploads || {};
-          cfg.uploads[cat] = cfg.uploads[cat] || [];
-          const publicName = 'r2/' + key; // 前台用 photos/r2/<key> 讀
-          cfg.uploads[cat].push(publicName);
-          await saveConfig(env, cfg);
-          return json({ ok: true, file: publicName });
+          return json({ photos, sections });
         }
 
         if (p === '/api/admin/photo/delete' && method === 'POST') {
+          if (!env.DB) return json({ error: 'db_not_bound' }, 503);
           const { cat, file } = await request.json().catch(() => ({}));
           if (!cat || !file) return json({ error: 'missing_params' }, 400);
-          const cfg = await getConfig(env);
-          if (String(file).startsWith('r2/')) {
-            if (env.PHOTOS) await env.PHOTOS.delete(String(file).slice(3)).catch(() => {});
-            cfg.uploads = cfg.uploads || {};
-            cfg.uploads[cat] = (cfg.uploads[cat] || []).filter(f => f !== file);
-          } else {
-            cfg.deleted = cfg.deleted || [];
-            if (!cfg.deleted.includes(file)) cfg.deleted.push(file);
-          }
-          await saveConfig(env, cfg);
+          await env.DB.prepare('INSERT INTO photo_state (cat,file,deleted) VALUES (?,?,1) ON CONFLICT(cat,file) DO UPDATE SET deleted=1').bind(cat, file).run();
           return json({ ok: true });
         }
 
         if (p === '/api/admin/photo/order' && method === 'POST') {
+          if (!env.DB) return json({ error: 'db_not_bound' }, 503);
           const { cat, order } = await request.json().catch(() => ({}));
           if (!cat || !Array.isArray(order)) return json({ error: 'missing_params' }, 400);
-          const cfg = await getConfig(env);
-          cfg.order = cfg.order || {};
-          cfg.order[cat] = order;
-          await saveConfig(env, cfg);
+          for (let i = 0; i < order.length; i++) {
+            await env.DB.prepare('INSERT INTO photo_state (cat,file,sort_order) VALUES (?,?,?) ON CONFLICT(cat,file) DO UPDATE SET sort_order=excluded.sort_order')
+              .bind(cat, order[i], i).run();
+          }
           return json({ ok: true });
         }
 
         if (p === '/api/admin/story' && method === 'POST') {
+          if (!env.DB) return json({ error: 'db_not_bound' }, 503);
           const { cat, text } = await request.json().catch(() => ({}));
           if (!cat) return json({ error: 'missing_cat' }, 400);
-          const cfg = await getConfig(env);
-          cfg.stories = cfg.stories || {};
-          cfg.stories[cat] = String(text || '').slice(0, 300);
-          await saveConfig(env, cfg);
-          const sections = (cfg.sections || DEFAULT_SECTIONS).map(s => s.k === cat ? { ...s, d: cfg.stories[cat] } : s);
-          cfg.sections = sections;
-          await saveConfig(env, cfg);
+          await env.DB.prepare('UPDATE sections SET d=? WHERE k=?').bind(String(text || '').slice(0, 300), cat).run();
           return json({ ok: true });
         }
 
         if (p === '/api/admin/section' && method === 'POST') {
+          if (!env.DB) return json({ error: 'db_not_bound' }, 503);
           const body = await request.json().catch(() => ({}));
           const k = sanitizeKey(body.k);
           if (!k) return json({ error: 'missing_key' }, 400);
           const n = String(body.n || k).slice(0, 20);
           const ic = ALLOWED_ICONS.has(body.ic) ? body.ic : 'i-cam';
           const d = String(body.d || '').slice(0, 300);
-          const cfg = await getConfig(env);
-          const list = cfg.sections || DEFAULT_SECTIONS;
-          const idx = list.findIndex(s => s.k === k);
-          if (idx >= 0) list[idx] = { k, n, ic, d }; else list.push({ k, n, ic, d });
-          cfg.sections = list;
-          await saveConfig(env, cfg);
+          const existing = await env.DB.prepare('SELECT k FROM sections WHERE k=?').bind(k).first().catch(() => null);
+          if (existing) {
+            await env.DB.prepare('UPDATE sections SET n=?, ic=?, d=? WHERE k=?').bind(n, ic, d, k).run();
+          } else {
+            const max = await env.DB.prepare('SELECT COALESCE(MAX(sort_order),-1) m FROM sections').first().catch(() => ({ m: -1 }));
+            await env.DB.prepare('INSERT INTO sections (k,n,ic,d,sort_order) VALUES (?,?,?,?,?)').bind(k, n, ic, d, (max?.m ?? -1) + 1).run();
+          }
           return json({ ok: true });
         }
 
         if (p === '/api/admin/section/delete' && method === 'POST') {
+          if (!env.DB) return json({ error: 'db_not_bound' }, 503);
           const { k } = await request.json().catch(() => ({}));
-          const cfg = await getConfig(env);
-          cfg.sections = (cfg.sections || DEFAULT_SECTIONS).filter(s => s.k !== k);
-          await saveConfig(env, cfg);
+          if (!k) return json({ error: 'missing_key' }, 400);
+          await env.DB.prepare('DELETE FROM sections WHERE k=?').bind(k).run();
           return json({ ok: true });
         }
 
         if (p === '/api/admin/section/order' && method === 'POST') {
+          if (!env.DB) return json({ error: 'db_not_bound' }, 503);
           const { order } = await request.json().catch(() => ({}));
           if (!Array.isArray(order)) return json({ error: 'missing_order' }, 400);
-          const cfg = await getConfig(env);
-          cfg.secOrder = order;
-          await saveConfig(env, cfg);
+          for (let i = 0; i < order.length; i++) await env.DB.prepare('UPDATE sections SET sort_order=? WHERE k=?').bind(i, order[i]).run();
           return json({ ok: true });
         }
 
         if (p === '/api/admin/theme' && method === 'POST') {
           const { theme } = await request.json().catch(() => ({}));
-          const cfg = await getConfig(env);
-          cfg.theme = sanitizeKey(theme) || 'glam';
-          await saveConfig(env, cfg);
+          await setSetting(env, 'theme', sanitizeKey(theme) || 'glam');
           return json({ ok: true });
         }
 

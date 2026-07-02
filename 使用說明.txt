@@ -5,23 +5,27 @@
 
 【後台管理(推薦，會用瀏覽器點滑鼠就會用)】
 去 /admin/ 輸入密碼登入(密碼是你在 CF 設的 ADMIN_PASS，見下方「後台設定」)，可以：
-- 每個相簿分類：編輯故事文案、刪除/排序照片、上傳新照片(自動轉webp，不用另外裝軟體)
+- 每個相簿分類：編輯故事文案、刪除/排序照片
 - 新增/刪除/排序整個相簿分類
-- 上傳圖片：選圖就好，瀏覽器會自動幫你轉成 webp 再上傳，不用自己轉檔
 - 主題風格：目前只有「玫瑰金 Glam」一套，要加新風格跟我說一聲
+
+※ 這個後台不做「網頁上傳圖片」。新照片一樣是 git push 進 photos/ 資料夾(我幫你轉webp+分類)，
+   推上去後照片會自動出現在對應分類，然後就可以在後台排序/寫文案/刪除。
 
 【後台設定(第一次用要先在 CF 儀表板點幾下)】
 去 Cloudflare 儀表板 → Workers & Pages → adom → Settings：
-1. R2：先在左側「R2」建一個 bucket(名字隨意) → 回 adom → Settings → Bindings → Add binding
-   → 選 R2 Bucket → Variable name 填「PHOTOS」(一定要這個名字) → 選剛建的 bucket
-2. KV：左側「Workers & Pages → KV」建一個 namespace(名字隨意) → 回 adom → Bindings → Add binding
-   → 選 KV Namespace → Variable name 填「SITE_KV」(一定要這個名字) → 選剛建的 namespace
-3. Settings → Variables and Secrets → Add：
+1. D1：先在左側「Storage & Databases → D1 SQL Database」建一個資料庫(名字隨意，例如 adom-db)
+   → 回 adom → Settings → Bindings → Add binding → 選 D1 Database
+   → Variable name 填「DB」(一定要這個名字，大寫) → 選剛建的資料庫
+2. Settings → Variables and Secrets → Add：
    - ADMIN_PASS = 你要設的後台密碼
    - ADMIN_SECRET = 任意一長串亂碼(簽章用，不用記得住)
-4. 存檔，重新整理 /admin/ 即可登入
+3. 存檔，重新整理 /admin/ 即可登入
 
-沒做這幾步之前，網站本身完全正常(照舊顯示現有照片)，只是 /admin/ 的上傳/編輯功能會提示「尚未綁定」。
+表格(sections/photo_state/settings/donations)會在第一次真的呼叫 API 時自動建立，
+不用手動去 D1 主控台貼 SQL。
+
+沒做這幾步之前，網站本身完全正常(照舊顯示現有照片)，只是 /admin/ 的編輯功能會提示「尚未綁定」。
 
 【抖內三階(USDT，OxaPay 金流)】
 src/worker.js 最上面 DONATE_TIERS 常數可改金額/文案，目前：
@@ -33,14 +37,14 @@ index.html 裡也有一份一樣的 DONATE_TIERS(前端顯示用)，改的話兩
    金流帳號共用等於鏈上/後台把阿東跟 ys89/預測站兜在一起，失去分開經營的意義)
 2. 拿到 merchant API key → CF adom → Settings → Variables and Secrets → Add
    → OXAPAY_API_KEY = 你的 key
-3. 存檔即可，網站的「選一個等級開始」按鈕會自動改用真金流
+3. 存檔即可，網站的「選一個等級開始」按鈕會自動改用真金流(靠 D1 存訂單狀態)
 
 沒設定 OXAPAY_API_KEY 之前，抖內彈窗會顯示「線上刷卡尚未開通」，
 但下面「直接轉帳(彈性金額)」那組 QR/地址仍正常可用。
 
 抖內成功後會自動：
 - 帶回網站顯示感謝頁 + 對應福利(解鎖高清寫真 / 進私密頻道連結)
-- 如果有填暱稱，出現在首頁「感謝牆」
+- 如果有填暱稱，出現在首頁「感謝牆」(資料來自 D1 donations 表，已付款才會顯示)
 
 【解鎖碼 / 私密頻道 / 收款地址】
 打開 index.html 最上面：
@@ -57,5 +61,13 @@ index.html 裡也有一份一樣的 DONATE_TIERS(前端顯示用)，改的話兩
 阿東帶去預測站的人，在 picks168 後台「🎯 KOL 代碼」分頁看得到成效(代碼 adong)。
 夜色帶量另外看 ys89 代理後台的代理碼 rs82gq。
 
+【CF 上目前有 2 個部署，adom-2ar.pages.dev 那個是舊的、建議刪掉】
+加 wrangler.toml 後 CF 自動多拆出一個舊版靜態 Pages 專案(adom-2ar.pages.dev)，
+跟真正在用的 Worker 版(adom.adongwang97.workers.dev)是分開的兩份，容易搞混，
+確認新版都正常後可以去 CF 儀表板把 adom-2ar 那個刪掉，只留 Worker 版。
+
 【部署】
 git push 到 GitHub(adongwang97-cpu/adom)即可，CF 有連 Git 會自動重新部署。
+⚠️ 不要再用 GitHub 網頁拖拉上傳檔案 — 之前這樣做過一次，把新版蓋回舊版，
+  導致要用 force push 才修復。新檔案都交給 Claude 在本機改好 commit，
+  你只要負責在終端機跑 git push 這一步。
