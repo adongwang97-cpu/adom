@@ -45,6 +45,8 @@ textarea{resize:vertical;min-height:52px}
 .pitem .mv button{background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:5px;width:20px;height:18px;font-size:10px;cursor:pointer}
 .newsec{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .newsec .full{grid-column:1/-1}
+.uploadRow{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.uploadRow input[type=file]{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--tx);font-size:13px}
 .themeRow{display:flex;gap:10px;flex-wrap:wrap}
 .themeCard{border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer;font-size:13px}
 .themeCard.active{border-color:var(--gold);background:rgba(232,192,125,.1)}
@@ -87,8 +89,15 @@ textarea{resize:vertical;min-height:52px}
     <div id="statusBanner"></div>
 
     <div class="panel">
-      <h2>📷 怎麼加新照片</h2>
-      <div class="dim">這個後台管「文案／排序／刪除／分類」，照片檔案本身跟以前一樣 git push 進 photos/ 資料夾（我幫你轉webp、加好分類前綴），推上去之後這裡就會自動出現，可以再排序/寫文案。</div>
+      <h2>📷 上傳照片</h2>
+      <div class="dim">選分類、選圖(可一次選多張)，會自動幫你轉成 WebP 再上傳，上傳完直接出現在下面可以排序/刪除。舊的 git push 方式也還能用，兩種並存不衝突。</div>
+      <div class="uploadRow">
+        <select id="upCat"></select>
+        <input type="file" id="upFile" accept="image/*" multiple>
+      </div>
+      <div style="height:8px"></div>
+      <button class="btn sm" onclick="startUpload()">開始上傳</button>
+      <div id="upMsg" class="dim" style="margin-top:8px;min-height:16px"></div>
     </div>
 
     <div class="panel">
@@ -195,6 +204,7 @@ function loadData(){
     renderTheme();
     renderSections();
     fillPhotoPicker();
+    fillUploadCatPicker();
   });
   loadPosts();
 }
@@ -206,6 +216,59 @@ function fillPhotoPicker(){
     (STATE.data.photos[cat]||[]).forEach(function(f){ opts+='<option value="'+f+'">'+cat+' / '+f+'</option>'; });
   });
   sel.innerHTML=opts;
+}
+function fillUploadCatPicker(){
+  var sel=document.getElementById('upCat');
+  var secs=STATE.data.sections||[];
+  sel.innerHTML=secs.length?secs.map(function(s){return '<option value="'+s.k+'">'+esc(s.n)+'（'+s.k+'）</option>';}).join(''):'<option value="">(尚無分類，請先新增一個)</option>';
+}
+
+// ===== 後台上傳照片：瀏覽器端先轉 WebP(長邊限1600px)，再依序上傳到 R2 =====
+function toWebp(file,maxDim,quality){
+  return new Promise(function(resolve,reject){
+    var img=new Image();
+    var url=URL.createObjectURL(file);
+    img.onload=function(){
+      URL.revokeObjectURL(url);
+      var w=img.width,h=img.height;
+      if(w>maxDim||h>maxDim){ if(w>h){h=Math.round(h*maxDim/w);w=maxDim;} else {w=Math.round(w*maxDim/h);h=maxDim;} }
+      var c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      c.toBlob(function(blob){ blob?resolve(blob):reject(new Error('轉檔失敗')); },'image/webp',quality);
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);reject(new Error('圖片讀取失敗'));};
+    img.src=url;
+  });
+}
+function startUpload(){
+  var cat=document.getElementById('upCat').value;
+  var files=document.getElementById('upFile').files;
+  var msg=document.getElementById('upMsg');
+  if(!cat){msg.textContent='請先選分類';msg.style.color='var(--danger)';return;}
+  if(!files||!files.length){msg.textContent='請選圖片';msg.style.color='var(--danger)';return;}
+  var total=files.length,done=0,failed=0;
+  msg.style.color='';
+  (function next(i){
+    if(i>=total){
+      msg.textContent='✓ 完成，成功 '+done+' 張'+(failed?'，失敗 '+failed+' 張':'');
+      msg.style.color=failed?'var(--danger)':'var(--ok)';
+      document.getElementById('upFile').value='';
+      loadData();
+      return;
+    }
+    msg.textContent='上傳中 ('+(i+1)+'/'+total+')…';
+    toWebp(files[i],1600,0.85).then(function(blob){
+      var fd=new FormData();
+      fd.append('cat',cat);
+      fd.append('file',blob,'upload.webp');
+      // 注意：這裡故意不用共用的 api() helper，因為它會固定加 content-type:application/json，
+      // FormData 上傳需要瀏覽器自己帶正確的 multipart boundary，不能手動指定
+      return fetch('/api/admin/photo/upload',{method:'POST',credentials:'same-origin',body:fd});
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d&&d.ok)done++; else failed++;
+      next(i+1);
+    }).catch(function(){failed++;next(i+1);});
+  })(0);
 }
 
 function loadPosts(){

@@ -1,14 +1,16 @@
 /**
- * 阿東寫真站 — 後台 Worker（D1 版，不做圖片上傳；圖片仍靠 git push 進 photos/）
+ * 阿東寫真站 — 後台 Worker（D1 版；圖片可 git push 進 photos/，也可後台直接上傳到 R2）
  * 公開路由：
- *   GET  /api/photos.json        合併「git 內建照片」+ D1 排序/刪除狀態，給前台用
+ *   GET  /api/photos.json        合併「git 內建照片」+「R2後台上傳照片」+ D1 排序/刪除狀態，給前台用
+ *   GET  /r2/:key                讀後台上傳到 R2 的照片本體
  * 後台路由（需登入，密碼比對 env.ADMIN_PASS）：
  *   POST /api/admin/login        {password} → 設簽章 cookie
  *   POST /api/admin/logout
  *   GET  /api/admin/check        目前是否已登入 + D1 是否已綁定
  *   GET  /api/admin/data         後台編輯用的完整資料(所有分類/照片/文案)
- *   POST /api/admin/photo/delete {cat, file}   軟刪除(不動 git 檔案，只是不顯示)
+ *   POST /api/admin/photo/delete {cat, file}   軟刪除(不動 git/R2 檔案，只是不顯示)
  *   POST /api/admin/photo/order  {cat, order:[filename,...]}
+ *   POST /api/admin/photo/upload multipart{cat, file(webp)} → 存 R2，回 {file}
  *   POST /api/admin/story        {cat, text}
  *   POST /api/admin/section      新增/更新分類 {k, n, ic, d}
  *   POST /api/admin/section/delete  {k}
@@ -26,7 +28,7 @@
  *   POST /api/admin/post/delete  {id}
  * 其餘 → 靜態檔(env.ASSETS)
  *
- * 需要的 CF 綁定：D1(binding名稱=DB) + Secrets(ADMIN_PASS/ADMIN_SECRET/OXAPAY_API_KEY/TG_BOT_TOKEN)
+ * 需要的 CF 綁定：D1(binding名稱=DB) + R2(binding名稱=PHOTOS_R2，後台上傳用) + Secrets(ADMIN_PASS/ADMIN_SECRET/OXAPAY_API_KEY/TG_BOT_TOKEN)
  * 表格首次使用自動建立(CREATE TABLE IF NOT EXISTS)，不用手動貼 SQL。
  */
 
@@ -173,6 +175,8 @@ async function ensureSchema(env) {
     `CREATE TABLE IF NOT EXISTS purchases (order_id TEXT PRIMARY KEY, type TEXT NOT NULL, target TEXT, amount REAL NOT NULL, access_code TEXT NOT NULL, name TEXT, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now')), paid_at TEXT, expires_at TEXT, channel_link TEXT)`,
     `CREATE INDEX IF NOT EXISTS idx_purchases_access ON purchases(access_code)`,
     `CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY AUTOINCREMENT, caption TEXT NOT NULL, photo TEXT, posted_at TEXT, created_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS r2_photos (file TEXT PRIMARY KEY, cat TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE INDEX IF NOT EXISTS idx_r2_photos_cat ON r2_photos(cat)`,
   ];
   try {
     for (const s of stmts) await env.DB.prepare(s).run();
@@ -209,9 +213,21 @@ async function getStaticPhotos(request, env) {
   } catch { return {}; }
 }
 
-// ── 合併靜態照片 + D1 排序/刪除狀態，產出前台/後台都能用的完整資料 ──
+// ── 讀後台上傳到 R2 的照片清單（格式跟 getStaticPhotos 一致：{cat: [file,...]}）──
+async function getR2Photos(env) {
+  if (!env.DB) return {};
+  try {
+    const { results } = await env.DB.prepare('SELECT cat, file FROM r2_photos ORDER BY created_at ASC').all();
+    const out = {};
+    for (const r of results || []) (out[r.cat] = out[r.cat] || []).push(r.file);
+    return out;
+  } catch { return {}; }
+}
+
+// ── 合併靜態照片(git) + 後台上傳照片(R2) + D1 排序/刪除狀態，產出前台/後台都能用的完整資料 ──
 async function buildMerged(request, env) {
-  const [staticPhotos, sections] = await Promise.all([getStaticPhotos(request, env), getSections(env)]);
+  const [staticPhotos, r2Photos, sections] = await Promise.all([getStaticPhotos(request, env), getR2Photos(env), getSections(env)]);
+  const allCats = new Set([...Object.keys(staticPhotos), ...Object.keys(r2Photos)]);
   let stateRows = [];
   if (env.DB) {
     try { stateRows = (await env.DB.prepare('SELECT cat, file, sort_order, deleted FROM photo_state').all()).results || []; } catch { /* ignore */ }
@@ -220,11 +236,11 @@ async function buildMerged(request, env) {
   for (const r of stateRows) { (byCat[r.cat] = byCat[r.cat] || []).push(r); }
 
   const photos = {};
-  for (const k of Object.keys(staticPhotos)) {
+  for (const k of allCats) {
     const state = byCat[k] || [];
     const deleted = new Set(state.filter(r => r.deleted).map(r => r.file));
     const orderMap = new Map(state.filter(r => r.sort_order != null).map(r => [r.file, r.sort_order]));
-    let list = (staticPhotos[k] || []).filter(f => !deleted.has(f));
+    let list = [...(staticPhotos[k] || []), ...(r2Photos[k] || [])].filter(f => !deleted.has(f));
     if (orderMap.size) {
       list = list.slice().sort((a, b) => {
         const oa = orderMap.has(a) ? orderMap.get(a) : 9999, ob = orderMap.has(b) ? orderMap.get(b) : 9999;
@@ -321,6 +337,14 @@ export default {
       if (p === '/api/photos.json' && method === 'GET') {
         const { photos, sections, theme } = await buildMerged(request, env);
         return json({ ...photos, __sections: sections, __theme: theme });
+      }
+
+      // ── 公開：讀後台上傳到 R2 的照片本體(key 帶時間戳+隨機碼，內容不變，可長效快取) ──
+      if (p.startsWith('/r2/') && method === 'GET') {
+        if (!env.PHOTOS_R2) return new Response('not_configured', { status: 503 });
+        const obj = await env.PHOTOS_R2.get(p.slice(1));
+        if (!obj) return new Response('not_found', { status: 404 });
+        return new Response(obj.body, { headers: { 'content-type': obj.httpMetadata?.contentType || 'image/webp', 'cache-control': 'public, max-age=31536000, immutable' } });
       }
 
       // ── 公開：VIP 專區購買(單張/整本/訂閱) → 建 OxaPay 發票 ──
@@ -458,6 +482,25 @@ export default {
               .bind(cat, order[i], i).run();
           }
           return json({ ok: true });
+        }
+
+        if (p === '/api/admin/photo/upload' && method === 'POST') {
+          if (!env.PHOTOS_R2) return json({ error: 'r2_not_bound', hint: '尚未在 CF 建立/綁定 R2 bucket(binding名稱=PHOTOS_R2)，見使用說明.txt' }, 503);
+          if (!env.DB) return json({ error: 'db_not_bound' }, 503);
+          const form = await request.formData().catch(() => null);
+          if (!form) return json({ error: 'bad_form' }, 400);
+          const cat = sanitizeKey(form.get('cat'));
+          const file = form.get('file');
+          if (!cat) return json({ error: 'missing_cat' }, 400);
+          const validCat = await env.DB.prepare('SELECT k FROM sections WHERE k=?').bind(cat).first().catch(() => null);
+          if (!validCat) return json({ error: 'unknown_cat', hint: '請先在後台新增這個分類' }, 400);
+          if (!file || typeof file === 'string') return json({ error: 'missing_file' }, 400);
+          if (file.type !== 'image/webp') return json({ error: 'bad_type', hint: '只接受 WebP 圖片(前端會自動轉檔)' }, 400);
+          if (file.size > 8 * 1024 * 1024) return json({ error: 'too_large', hint: '單張上限 8MB' }, 400);
+          const key = `r2/${cat}-${Date.now()}-${Math.random().toString(16).slice(2, 6)}.webp`;
+          await env.PHOTOS_R2.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: 'image/webp' } });
+          await env.DB.prepare('INSERT INTO r2_photos (file, cat) VALUES (?,?)').bind(key, cat).run();
+          return json({ ok: true, file: key });
         }
 
         if (p === '/api/admin/story' && method === 'POST') {

@@ -13,6 +13,12 @@ binding = "DB"
 database_name = "adom-db"
 database_id = "fb5de068-efad-482e-a152-79d13732e39e"
 
+# R2 儲存後台上傳的照片(圖片檔案本身)：bucket 要先在 CF Dashboard 建立(見 使用說明.txt)，
+# 建立前跑 wrangler deploy 會失敗，這是正常的，先建 bucket 再 deploy 即可。
+[[r2_buckets]]
+binding = "PHOTOS_R2"
+bucket_name = "adom-photos"
+
 # 頻道自動發文排程：每小時觸發一次
 # - 指定日期發文：每小時檢查，時間到了就發(準度1小時內)
 # - 輪播池(沒指定日期)：只在 UTC 12點=台灣晚上20點發一則，每天一次
