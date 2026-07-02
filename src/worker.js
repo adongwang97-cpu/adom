@@ -14,11 +14,12 @@
  *   POST /api/admin/section/delete  {k}
  *   POST /api/admin/section/order   {order:[k,...]}
  *   POST /api/admin/theme        {theme}
- * 抖內（OxaPay，免商戶KYC，跟 picks168 同一套簽章邏輯）：
- *   POST /api/donate/create      {tier, name} → 建發票，回 pay_url
- *   POST /api/donate/webhook     OxaPay 付款完成回調（header HMAC 簽章）
- *   GET  /api/donate/status      ?order=xxx → 感謝頁輪詢用
- *   GET  /api/supporters         公開，感謝牆用（最近抖內暱稱，來自 donations 表）
+ * VIP 專區付費解鎖（OxaPay，免商戶KYC，跟 picks168 同一套簽章邏輯）：
+ *   POST /api/vip/create         {type:'photo'|'album'|'sub', target, name, code} → 建發票，回 {pay_url, access_code}
+ *   POST /api/vip/webhook        OxaPay 付款完成回調（header HMAC 簽章）
+ *   GET  /api/vip/order-status   ?order=xxx → 付款返回頁輪詢用
+ *   GET  /api/vip/status         ?code=xxx → 查該存取碼目前解鎖了什麼（單張/整本vip相簿/訂閱中）
+ *   GET  /api/supporters         公開，感謝牆用（最近付費者暱稱，來自 purchases 表）
  * 頻道自動發文（預先寫好文案輪播，每天定時發到私密頻道）：
  *   GET  /api/admin/posts        列出所有排程文案
  *   POST /api/admin/post         新增 {caption, photo}（photo 是 photos/ 底下的檔名，可留空=純文字）
@@ -32,12 +33,6 @@
 const COOKIE_NAME = 'admin_session';
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 天
 
-// ── 抖內三階：改這裡數字/文案即可，不用動邏輯 ──
-const DONATE_TIERS = {
-  bronze: { n: '應援 Bronze', usd: 5, perks: ['解鎖 🔒解鎖專區 全部高清寫真', '感謝牆掛名'] },
-  silver: { n: 'VIP Silver', usd: 15, perks: ['以上全部', '私密 TG 頻道（獨家影片・搶先看）'] },
-  gold: { n: '摯友 Gold', usd: 30, perks: ['以上全部', '每月 1 則阿東親自回覆', '感謝牆置頂金色標示'] },
-};
 const DEFAULT_SECTIONS = [
   { k: 'soccer', n: '世足賽系列', ic: 'i-bolt', d: '跟著世界盃一起瘋 —— 球場邊最亮的那個就是我，穿上球衣為我的主隊尖叫 ⚽' },
   { k: 'cafe', n: '下午茶系列', ic: 'i-cam', d: '沒有比賽的午後，一杯咖啡、一點慵懶 —— 這是只給你們看的悠閒時光 ☕' },
@@ -46,7 +41,7 @@ const DEFAULT_SECTIONS = [
 ];
 const ALLOWED_ICONS = new Set(['i-heart', 'i-cam', 'i-bolt', 'i-spark', 'i-lock', 'i-dice', 'i-coin']);
 
-// ── 私密頻道單次邀請連結：Silver/Gold 抖內確認付款後，用 bot 現生一條「只能用一次」的邀請連結，
+// ── 私密頻道單次邀請連結：VIP 月訂閱確認付款後(僅訂閱者，單張/整本購買不給)，用 bot 現生一條「只能用一次」的邀請連結，
 //    不怕連結被轉傳濫用。TG_BOT_TOKEN 是 CF secret；頻道數字 ID 填這裡(bot 要先被加成頻道管理員)。
 const TG_CHANNEL_ID = '-1004415183915';   // 阿東寫真筆記(私密頻道)
 async function tgCreateOneTimeInvite(env) {
@@ -175,13 +170,12 @@ async function ensureSchema(env) {
     `CREATE TABLE IF NOT EXISTS sections (k TEXT PRIMARY KEY, n TEXT NOT NULL, ic TEXT NOT NULL DEFAULT 'i-cam', d TEXT DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))`,
     `CREATE TABLE IF NOT EXISTS photo_state (cat TEXT NOT NULL, file TEXT NOT NULL, sort_order INTEGER, deleted INTEGER DEFAULT 0, PRIMARY KEY (cat, file))`,
     `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
-    `CREATE TABLE IF NOT EXISTS donations (order_id TEXT PRIMARY KEY, tier TEXT NOT NULL, name TEXT, amount REAL NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now')), paid_at TEXT)`,
+    `CREATE TABLE IF NOT EXISTS purchases (order_id TEXT PRIMARY KEY, type TEXT NOT NULL, target TEXT, amount REAL NOT NULL, access_code TEXT NOT NULL, name TEXT, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now')), paid_at TEXT, expires_at TEXT, channel_link TEXT)`,
+    `CREATE INDEX IF NOT EXISTS idx_purchases_access ON purchases(access_code)`,
     `CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY AUTOINCREMENT, caption TEXT NOT NULL, photo TEXT, posted_at TEXT, created_at TEXT DEFAULT (datetime('now')))`,
   ];
   try {
     for (const s of stmts) await env.DB.prepare(s).run();
-    // 舊表可能沒有 channel_link 欄位（單次邀請連結）；已存在會報錯，吞掉即可
-    try { await env.DB.prepare('ALTER TABLE donations ADD COLUMN channel_link TEXT').run(); } catch { /* 欄位已存在 */ }
     // 舊表可能沒有 scheduled_at 欄位（指定日期發文）；已存在會報錯，吞掉即可
     try { await env.DB.prepare('ALTER TABLE posts ADD COLUMN scheduled_at TEXT').run(); } catch { /* 欄位已存在 */ }
     schemaReady = true;
@@ -329,31 +323,42 @@ export default {
         return json({ ...photos, __sections: sections, __theme: theme });
       }
 
-      // ── 公開：抖內三階 → 建 OxaPay 發票 ──
-      if (p === '/api/donate/create' && method === 'POST') {
+      // ── 公開：VIP 專區購買(單張/整本/訂閱) → 建 OxaPay 發票 ──
+      if (p === '/api/vip/create' && method === 'POST') {
         if (!env.OXAPAY_API_KEY) return json({ error: 'gateway_not_configured', hint: '尚未設定 OXAPAY_API_KEY(阿東自己的商戶key，不可跟 picks168 共用)' }, 503);
         if (!env.DB) return json({ error: 'db_not_bound', hint: '請先在 CF 綁定 D1(binding名稱=DB)' }, 503);
         const body = await request.json().catch(() => ({}));
-        const tierKey = sanitizeKey(body.tier);
-        const tier = DONATE_TIERS[tierKey];
-        if (!tier) return json({ error: 'bad_tier' }, 400);
+        const type = ['photo', 'album', 'sub'].includes(body.type) ? body.type : null;
+        if (!type) return json({ error: 'bad_type' }, 400);
+        const amountMap = { photo: 5, album: 10, sub: 30 };
+        const labelMap = { photo: '單張解鎖', album: '整本相簿解鎖', sub: '月訂閱' };
+        const amount = amountMap[type];
+        let target = null;
+        if (type === 'photo') {
+          target = String(body.target || '').replace(/[^\w.\-]/g, '').slice(0, 80);
+          if (!target) return json({ error: 'missing_target' }, 400);
+        } else if (type === 'album') {
+          target = 'vip';
+        }
         const name = String(body.name || '').replace(/[<>]/g, '').slice(0, 24);
-        const order_id = `dn_${tierKey}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        // 存取碼：這台裝置若已經有(之前買過)就沿用，讓多筆購買記在同一組碼下；沒有就發一組新的
+        const accessCode = /^ad_[a-f0-9]{16}$/.test(body.code || '') ? body.code : ('ad_' + [...crypto.getRandomValues(new Uint8Array(8))].map(b => b.toString(16).padStart(2, '0')).join(''));
+        const order_id = `vp_${type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const origin = url.origin;
         const inv = await oxaCreateInvoice(env, {
-          amount: tier.usd, order_id,
-          callbackUrl: `${origin}/api/donate/webhook`,
+          amount, order_id,
+          callbackUrl: `${origin}/api/vip/webhook`,
           returnUrl: `${origin}/?paid=${order_id}`,
-          description: `阿東抖內・${tier.n}`,
+          description: `阿東寫真・${labelMap[type]}`,
         });
         if (!inv.ok || !inv.pay_url) return json({ error: 'invoice_failed', raw: inv.raw }, 502);
-        await env.DB.prepare('INSERT INTO donations (order_id, tier, name, amount, status) VALUES (?,?,?,?,\'pending\')')
-          .bind(order_id, tierKey, name, tier.usd).run();
-        return json({ ok: true, order_id, pay_url: inv.pay_url });
+        await env.DB.prepare('INSERT INTO purchases (order_id, type, target, amount, access_code, name, status) VALUES (?,?,?,?,?,?,\'pending\')')
+          .bind(order_id, type, target, amount, accessCode, name).run();
+        return json({ ok: true, order_id, pay_url: inv.pay_url, access_code: accessCode });
       }
 
       // ── 公開：OxaPay webhook（付款完成回調）──
-      if (p === '/api/donate/webhook' && method === 'POST') {
+      if (p === '/api/vip/webhook' && method === 'POST') {
         if (!env.OXAPAY_API_KEY || !env.DB) return new Response('not_configured', { status: 503 });
         const raw = await request.text();
         const sig = request.headers.get('HMAC') || request.headers.get('hmac');
@@ -361,33 +366,53 @@ export default {
         let data; try { data = JSON.parse(raw); } catch { return new Response('bad_json', { status: 400 }); }
         const orderId = data.order_id || '';
         if (orderId && OXA_PAID.has(data.status)) {
-          const before = await env.DB.prepare('SELECT tier, status FROM donations WHERE order_id=?').bind(orderId).first().catch(() => null);
-          await env.DB.prepare("UPDATE donations SET status='paid', paid_at=datetime('now') WHERE order_id=? AND status!='paid'").bind(orderId).run();
-          // Silver/Gold 首次確認付款 → 現生一條「單次」邀請連結(不怕被轉傳濫用)
-          if (before && before.status !== 'paid' && before.tier !== 'bronze') {
+          const before = await env.DB.prepare('SELECT type, status FROM purchases WHERE order_id=?').bind(orderId).first().catch(() => null);
+          const firstTimePaid = before && before.status !== 'paid';
+          if (before && before.type === 'sub') {
+            await env.DB.prepare("UPDATE purchases SET status='paid', paid_at=datetime('now'), expires_at=datetime('now','+30 days') WHERE order_id=? AND status!='paid'").bind(orderId).run();
+          } else {
+            await env.DB.prepare("UPDATE purchases SET status='paid', paid_at=datetime('now') WHERE order_id=? AND status!='paid'").bind(orderId).run();
+          }
+          // 只有訂閱者才給私密頻道「單次」邀請連結(不怕被轉傳濫用)
+          if (firstTimePaid && before.type === 'sub') {
             const link = await tgCreateOneTimeInvite(env);
-            if (link) await env.DB.prepare('UPDATE donations SET channel_link=? WHERE order_id=?').bind(link, orderId).run();
+            if (link) await env.DB.prepare('UPDATE purchases SET channel_link=? WHERE order_id=?').bind(link, orderId).run();
           }
         }
         return new Response('OK', { status: 200 });
       }
 
-      // ── 公開：感謝頁輪詢付款狀態 ──
-      if (p === '/api/donate/status' && method === 'GET') {
+      // ── 公開：付款返回頁輪詢 ──
+      if (p === '/api/vip/order-status' && method === 'GET') {
         const order = url.searchParams.get('order') || '';
         if (!env.DB) return json({ status: 'unknown' });
-        const rec = await env.DB.prepare('SELECT status, tier, channel_link FROM donations WHERE order_id=?').bind(order).first().catch(() => null);
+        const rec = await env.DB.prepare('SELECT status, type, access_code, channel_link FROM purchases WHERE order_id=?').bind(order).first().catch(() => null);
         if (!rec) return json({ status: 'unknown' });
-        return json({ status: rec.status, tier: rec.tier, channel_link: rec.channel_link || null });
+        return json({ status: rec.status, type: rec.type, access_code: rec.access_code, channel_link: rec.channel_link || null });
       }
 
-      // ── 公開：感謝牆(來自已付款的抖內紀錄) ──
+      // ── 公開：依存取碼查目前解鎖了什麼 ──
+      if (p === '/api/vip/status' && method === 'GET') {
+        const code = url.searchParams.get('code') || '';
+        if (!env.DB || !/^ad_[a-f0-9]{16}$/.test(code)) return json({ sub_active: false, album_owned: false, unlocked_photos: [] });
+        const { results } = await env.DB.prepare(
+          "SELECT type, target, expires_at FROM purchases WHERE access_code=? AND status='paid'"
+        ).bind(code).all().catch(() => ({ results: [] }));
+        const rows = results || [];
+        const subActive = rows.some(r => r.type === 'sub' && r.expires_at && r.expires_at > new Date().toISOString().slice(0, 19).replace('T', ' '));
+        const subRow = rows.filter(r => r.type === 'sub').sort((a, b) => (b.expires_at || '').localeCompare(a.expires_at || ''))[0];
+        const albumOwned = rows.some(r => r.type === 'album' && r.target === 'vip');
+        const unlockedPhotos = rows.filter(r => r.type === 'photo').map(r => r.target);
+        return json({ sub_active: subActive, sub_expires: subRow ? subRow.expires_at : null, album_owned: albumOwned, unlocked_photos: unlockedPhotos });
+      }
+
+      // ── 公開：感謝牆(來自已付款的購買紀錄；訂閱者比照原本 Gold 給星號) ──
       if (p === '/api/supporters' && method === 'GET') {
         if (!env.DB) return json({ list: [] });
         const { results } = await env.DB.prepare(
-          "SELECT name, tier, paid_at FROM donations WHERE status='paid' AND name IS NOT NULL AND name!='' ORDER BY paid_at DESC LIMIT 20"
+          "SELECT name, type, paid_at FROM purchases WHERE status='paid' AND name IS NOT NULL AND name!='' ORDER BY paid_at DESC LIMIT 20"
         ).all().catch(() => ({ results: [] }));
-        return json({ list: (results || []).map(r => ({ name: r.name, tier: r.tier, ts: r.paid_at })) });
+        return json({ list: (results || []).map(r => ({ name: r.name, tier: r.type === 'sub' ? 'gold' : 'bronze', ts: r.paid_at })) });
       }
 
       // ── 後台：登入 ──

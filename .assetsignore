@@ -4,3 +4,4 @@ wrangler.toml
 .assetsignore
 使用說明.txt
 build-gallery.mjs
+.wrangler/
