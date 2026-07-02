@@ -83,6 +83,57 @@ async function tgSendToChannel(env, origin, caption, photoFile) {
   } catch { return false; }
 }
 
+// ── 阿東專屬互動 bot：只認這個 TG 數字 ID，別人傳訊息完全不回應(避免暴露管理面) ──
+const ADMIN_TG_ID = 'REPLACE_你的TG數字ID';   // ← 你傳個 /start 給 bot 後，Claude 幫你抓出這個並填上去
+const SITE_URL = 'https://adom.adongwang97.workers.dev/';
+const ADMIN_KB = { keyboard: [
+  [{ text: '🌐 開啟阿東寫真站', web_app: { url: SITE_URL } }],
+  [{ text: '📢 立即發送排程文案' }, { text: '📊 頻道概況' }],
+], resize_keyboard: true, is_persistent: true };
+
+async function tgSend(env, chatId, text, extra) {
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${env.TG_BOT_TOKEN}/sendMessage`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', ...(extra || {}) }),
+    });
+    return (await r.json()).ok;
+  } catch { return false; }
+}
+
+async function handleAdminBotUpdate(update, env, origin) {
+  const msg = update.message;
+  if (!msg || !msg.from) return;
+  const uid = String(msg.from.id);
+  if (uid !== ADMIN_TG_ID) return;   // 不是你，完全不回應
+  const t = (msg.text || '').trim();
+
+  if (t === '/start' || t === '/help') {
+    await tgSend(env, uid, '👋 嗨阿東！這是你自己的管理小幫手。\n下面選單可以開網站、手動發文、看頻道概況。', { reply_markup: ADMIN_KB });
+    return;
+  }
+  if (t === '📢 立即發送排程文案') {
+    const r = await runScheduledPost(env, origin);
+    await tgSend(env, uid, r.ok ? '✅ 已發送一則到頻道' : '⚠️ 發送失敗：' + (r.error || '未知錯誤'), { reply_markup: ADMIN_KB });
+    return;
+  }
+  if (t === '📊 頻道概況') {
+    let memberCount = '—', queued = '—';
+    try {
+      const r = await fetch(`https://api.telegram.org/bot${env.TG_BOT_TOKEN}/getChatMemberCount?chat_id=${TG_CHANNEL_ID}`);
+      const d = await r.json().catch(() => ({}));
+      if (d && d.ok) memberCount = d.result;
+    } catch { /* ignore */ }
+    try {
+      if (env.DB) { const c = await env.DB.prepare('SELECT COUNT(*) n FROM posts').first(); queued = (c && c.n) || 0; }
+    } catch { /* ignore */ }
+    await tgSend(env, uid, `📊 <b>頻道概況</b>\n人數：${memberCount}\n排程文案數：${queued}`, { reply_markup: ADMIN_KB });
+    return;
+  }
+  // 其餘訊息一律回選單，不用猜
+  await tgSend(env, uid, '請用下方選單操作 👇', { reply_markup: ADMIN_KB });
+}
+
 const json = (data, status = 200, extraHeaders) => new Response(JSON.stringify(data), {
   status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...(extraHeaders || {}) },
 });
@@ -238,6 +289,16 @@ export default {
     await ensureSchema(env);
 
     try {
+      // ── Telegram 呼叫：阿東專屬互動 bot(帶 secret_token 驗證，避免別人偽造呼叫) ──
+      if (p === '/api/tgbot/webhook' && method === 'POST') {
+        if (env.TG_WEBHOOK_SECRET && request.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.TG_WEBHOOK_SECRET) {
+          return new Response('forbidden', { status: 403 });
+        }
+        const update = await request.json().catch(() => null);
+        if (update) await handleAdminBotUpdate(update, env, url.origin);
+        return new Response('OK', { status: 200 });
+      }
+
       // ── 公開：前台合併資料 ──
       if (p === '/api/photos.json' && method === 'GET') {
         const { photos, sections, theme } = await buildMerged(request, env);
