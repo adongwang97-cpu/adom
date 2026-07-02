@@ -11,235 +11,155 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://api.qrserver.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,800;1,600&family=Great+Vibes&family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-<!-- ▼▼ GA4：換成阿東「獨立」property 的 Measurement ID（別接主帳號共用的）▼▼ -->
-<script>
-var GA_ID='G-XXXXXXXXXX';   // ← 只改這裡：阿東專屬 GA4 ID
-if(GA_ID.indexOf('XXXX')<0){var s=document.createElement('script');s.async=1;s.src='https://www.googletagmanager.com/gtag/js?id='+GA_ID;document.head.appendChild(s);}
-window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
-gtag('js',new Date());gtag('config',GA_ID);
-function track(n,p){try{gtag('event',n,p||{});}catch(e){}}
-</script>
-<!-- ▲▲ GA4 ▲▲ -->
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#160610; --card:rgba(232,192,125,.055);
-  --rose:#ff7a9c; --rose2:#ffb2c4; --gold:#e8c07d; --gold2:#f7e4bb; --berry:#8a2247; --wine:#3f0d20;
-  --tx:#fbeee9; --mut:#cba7ac;
-  --line:rgba(232,192,125,.24); --line2:rgba(232,192,125,.45);
+  --bg:#2a1030; --bg2:#3a1642; --card:rgba(255,120,200,.07);
+  --pk:#ff4da6; --pk2:#ff86c8; --mg:#e23bb0; --cy:#4fe0ff; --tx:#fff5fb; --mut:#e0b8d6;
+  --line:rgba(255,120,200,.28); --line2:rgba(255,120,200,.5);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC',system-ui,sans-serif;line-height:1.65;overflow-x:hidden}
-.serif{font-family:'Playfair Display','Noto Serif TC',serif}
+body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC',system-ui,sans-serif;line-height:1.6;overflow-x:hidden}
+.num{font-family:'Orbitron',sans-serif}
 .ic{width:1.1em;height:1.1em;vertical-align:-.16em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .ic.fill{fill:currentColor;stroke:none}
-/* ── 動態絲綢背景 ── */
-.silk{position:fixed;inset:-30%;z-index:-3;background:
-  radial-gradient(38% 40% at 25% 20%, rgba(255,122,156,.55), transparent 60%),
-  radial-gradient(42% 44% at 80% 15%, rgba(232,192,125,.4), transparent 62%),
-  radial-gradient(46% 48% at 70% 80%, rgba(138,34,71,.6), transparent 64%),
-  radial-gradient(40% 42% at 15% 85%, rgba(255,178,196,.32), transparent 62%);
-  filter:blur(20px);animation:silk 26s ease-in-out infinite alternate}
-@keyframes silk{0%{transform:translate(0,0) rotate(0) scale(1)}50%{transform:translate(3%,-2%) rotate(6deg) scale(1.08)}100%{transform:translate(-3%,2%) rotate(-5deg) scale(1.05)}}
-body::before{content:"";position:fixed;inset:0;z-index:-2;background:linear-gradient(180deg,rgba(22,6,16,.35),rgba(22,6,16,.72))}
-/* film grain */
-body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.07;mix-blend-mode:overlay;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size:140px 140px;animation:grain .6s steps(3) infinite}
-@keyframes grain{0%{background-position:0 0}33%{background-position:-40px 30px}66%{background-position:30px -40px}100%{background-position:0 0}}
-.orb{position:fixed;z-index:-2;border-radius:50%;filter:blur(46px);pointer-events:none;opacity:.5}
-.orb.a{width:260px;height:260px;background:rgba(255,122,156,.5);top:-50px;left:-70px;animation:fl1 15s ease-in-out infinite}
-.orb.b{width:220px;height:220px;background:rgba(232,192,125,.45);top:44%;right:-80px;animation:fl2 18s ease-in-out infinite}
-@keyframes fl1{50%{transform:translate(70px,60px)}}
-@keyframes fl2{50%{transform:translate(-60px,-50px)}}
-.fx{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-.petal{position:absolute;bottom:-40px;border-radius:60% 40% 55% 45%;animation:rise linear infinite;will-change:transform}
-.petal.h{border-radius:0;background:none!important;color:var(--rose2);font-size:16px;line-height:1;text-shadow:0 0 8px rgba(255,122,156,.6)}
-@keyframes rise{0%{transform:translateY(0) rotate(0);opacity:0}12%{opacity:.7}100%{transform:translateY(-118vh) rotate(300deg);opacity:0}}
-.wrap{max-width:960px;margin:0 auto;position:relative;padding-bottom:40px;z-index:1}
+/* bg glow (bright pink, not too dark) */
+body::before{content:"";position:fixed;inset:0;z-index:-2;background:
+  radial-gradient(60% 45% at 50% -6%, rgba(255,77,166,.5), transparent 62%),
+  radial-gradient(50% 40% at 100% 18%, rgba(226,59,176,.4), transparent 66%),
+  radial-gradient(55% 45% at 0% 70%, rgba(79,224,255,.22), transparent 66%),
+  linear-gradient(180deg,#3a1642,#2a1030)}
+body::after{content:"";position:fixed;inset:-2px;z-index:-1;opacity:.4;
+  background-image:linear-gradient(rgba(255,120,200,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,120,200,.06) 1px,transparent 1px);
+  background-size:44px 44px;animation:grid 24s linear infinite}
+@keyframes grid{to{background-position:0 -440px,-440px 0}}
+.wrap{max-width:960px;margin:0 auto;position:relative;padding-bottom:40px}
 /* topbar */
 .top{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;position:sticky;top:0;z-index:30;
-  background:linear-gradient(180deg,rgba(22,6,16,.85),rgba(22,6,16,.35) 70%,transparent);backdrop-filter:blur(8px)}
-.logo{font-size:22px;letter-spacing:1px;font-weight:800}
-.logo b{background:linear-gradient(90deg,var(--gold),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
-.logo span{font-family:'Noto Sans TC'}
-.donate-sm{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#2a0713;
-  background:linear-gradient(90deg,var(--gold),var(--gold2));border:none;border-radius:24px;padding:9px 16px;cursor:pointer;box-shadow:0 4px 18px rgba(232,192,125,.4)}
+  background:linear-gradient(180deg,rgba(42,16,48,.9),rgba(42,16,48,.4) 70%,transparent);backdrop-filter:blur(8px)}
+.logo{font-family:'Orbitron';font-weight:900;font-size:20px;letter-spacing:1px}
+.logo b{background:linear-gradient(90deg,var(--pk),var(--pk2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.donate-sm{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:#3a0022;
+  background:linear-gradient(90deg,var(--mg),var(--pk),var(--pk2));border:none;border-radius:22px;padding:9px 16px;cursor:pointer;
+  box-shadow:0 0 18px rgba(255,77,166,.5)}
 .donate-sm:active{transform:scale(.96)}
 /* hero */
-.hero{text-align:center;padding:30px 20px 8px}
-.ava-frame{width:150px;margin:0 auto 6px;padding:8px;border-radius:50%;background:linear-gradient(145deg,rgba(232,192,125,.5),rgba(255,122,156,.4));
-  box-shadow:0 0 50px rgba(255,122,156,.4);transform:rotate(-3deg);will-change:transform}
-.ava{width:100%;aspect-ratio:1;border-radius:50%;object-fit:cover;display:block;border:2px solid rgba(255,240,230,.5)}
-.sig{font-family:'Great Vibes',cursive;font-size:26px;color:var(--rose2);margin-top:10px;line-height:1}
-.hname{font-size:34px;font-weight:800;letter-spacing:1px;margin-top:2px}
-.hname .g{background:linear-gradient(90deg,var(--gold),var(--gold2),#fff,var(--gold2),var(--gold));background-size:220% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 4s linear infinite}
-@keyframes shine{to{background-position:220% center}}
-.htag{color:var(--mut);font-size:14.5px;margin-top:12px;font-weight:400;font-style:italic}
-.hchips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px}
-.chip{font-size:12px;font-weight:500;color:var(--gold2);border:1px solid var(--line2);border-radius:20px;padding:5px 14px;background:rgba(232,192,125,.06)}
-.donate-big{display:inline-flex;align-items:center;justify-content:center;gap:9px;margin-top:22px;
-  font-size:16px;font-weight:700;color:#2a0713;background:linear-gradient(90deg,var(--rose),var(--gold));
-  border:none;border-radius:30px;padding:15px 34px;cursor:pointer;box-shadow:0 8px 30px rgba(255,122,156,.4);animation:pulse 2.4s infinite}
+.hero{text-align:center;padding:26px 20px 10px}
+.ava{width:118px;height:118px;border-radius:50%;margin:0 auto 14px;object-fit:cover;border:3px solid var(--pk);
+  box-shadow:0 0 34px rgba(255,77,166,.6);background:linear-gradient(145deg,#4a1e52,#2a1030);display:block}
+.hname{font-size:30px;font-weight:900;letter-spacing:1px}
+.hname .g{background:linear-gradient(90deg,var(--pk2),#fff,var(--pk2));background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 3.5s linear infinite}
+@keyframes shine{to{background-position:200% center}}
+.htag{color:var(--mut);font-size:14.5px;margin-top:8px;font-weight:500}
+.hchips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.chip{font-size:12px;font-weight:700;color:var(--pk2);border:1px solid var(--line2);border-radius:20px;padding:5px 13px;background:rgba(255,120,200,.08)}
+.donate-big{display:inline-flex;align-items:center;justify-content:center;gap:9px;margin-top:20px;
+  font-size:17px;font-weight:900;color:#3a0022;background:linear-gradient(90deg,var(--mg),var(--pk),var(--pk2));
+  border:none;border-radius:16px;padding:16px 30px;cursor:pointer;box-shadow:0 8px 30px rgba(255,77,166,.45);animation:pulse 2.2s infinite}
 .donate-big:active{transform:scale(.97)}
-@keyframes pulse{50%{box-shadow:0 8px 44px rgba(255,122,156,.72)}}
-/* promo */
-.promo{margin:22px 20px 4px;background:linear-gradient(160deg,rgba(255,122,156,.1),rgba(232,192,125,.07));border:1px solid var(--line2);border-radius:20px;padding:20px 16px;text-align:center;box-shadow:0 0 34px rgba(255,122,156,.16);backdrop-filter:blur(3px)}
-.promo-t{font-size:18px;font-weight:800;margin-bottom:4px;font-family:'Playfair Display','Noto Serif TC',serif}
-.promo-t .g{background:linear-gradient(90deg,var(--rose2),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
-.promo-s{color:var(--mut);font-size:12.5px;margin-bottom:16px}
-.promo-btn{display:flex;align-items:center;justify-content:center;gap:9px;width:fit-content;max-width:100%;text-decoration:none;font-weight:700;font-size:15.5px;border-radius:28px;padding:13px 28px;margin:0 auto 12px;color:#2a0713;transition:transform .12s}
+@keyframes pulse{50%{box-shadow:0 8px 42px rgba(255,77,166,.75)}}
+/* promo (代理+預測站) */
+.promo{margin:18px 20px 4px;background:linear-gradient(160deg,rgba(255,77,166,.14),rgba(79,224,255,.08));border:1px solid var(--line2);border-radius:18px;padding:18px 16px;text-align:center;box-shadow:0 0 30px rgba(255,77,166,.22)}
+.promo-t{font-weight:900;font-size:16.5px;margin-bottom:4px}
+.promo-t .g{background:linear-gradient(90deg,var(--pk2),var(--cy));-webkit-background-clip:text;background-clip:text;color:transparent}
+.promo-s{color:var(--mut);font-size:12.5px;margin-bottom:14px}
+.promo-btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;text-decoration:none;font-weight:900;font-size:16px;border-radius:14px;padding:15px;margin-bottom:10px;color:#3a0022;transition:transform .12s}
 .promo-btn:last-child{margin-bottom:0}
 .promo-btn:active{transform:scale(.97)}
-.promo-btn.agent{background:linear-gradient(90deg,var(--gold),var(--rose2));box-shadow:0 6px 22px rgba(232,192,125,.35)}
-.promo-btn.pred{background:linear-gradient(90deg,var(--rose),var(--berry));color:#fff;box-shadow:0 6px 22px rgba(255,122,156,.3)}
+.promo-btn.agent{background:linear-gradient(90deg,#ffb14d,#ff6ea9);box-shadow:0 6px 22px rgba(255,150,80,.35)}
+.promo-btn.pred{background:linear-gradient(90deg,var(--cy),var(--pk));box-shadow:0 6px 22px rgba(79,224,255,.3)}
 .promo-btn .arw{animation:bounce 1.3s ease-in-out infinite}
 @keyframes bounce{50%{transform:translateX(5px)}}
 /* gallery */
-.gwrap{padding:26px 16px 10px}
-.gtitle{text-align:center;font-size:24px;font-weight:800;margin-bottom:4px;font-family:'Playfair Display','Noto Serif TC',serif}
-.gtitle .g{background:linear-gradient(90deg,var(--rose2),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
-.gsub{text-align:center;color:var(--mut);font-size:13px;margin-bottom:20px;font-style:italic}
-.gcat{font-size:18px;font-weight:800;color:var(--gold2);margin:24px 4px 6px;display:flex;align-items:center;gap:9px;font-family:'Playfair Display','Noto Serif TC',serif}
-.gcat::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line2),transparent)}
-.gcat .ic{color:var(--rose2);width:20px;height:20px}
-.gdesc{color:var(--mut);font-size:13px;font-style:italic;margin:0 4px 14px;line-height:1.6}
-.gcount{font-size:11.5px;font-weight:500;color:var(--mut);background:rgba(232,192,125,.1);padding:2px 11px;border-radius:20px;font-family:'Noto Sans TC'}
-.grid{display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;padding:2px 2px 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.grid::-webkit-scrollbar{display:none}
-.gitem{flex:0 0 auto;width:210px;height:290px;scroll-snap-align:center;border-radius:16px;overflow:hidden;position:relative;cursor:pointer;
-  border:1px solid var(--line);background:var(--card);transition:transform .35s,box-shadow .35s}
-@media(min-width:640px){.gitem{width:232px;height:318px}}
-.gitem img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s,filter .5s;filter:saturate(.92) contrast(1.03)}
-.gitem:hover{transform:translateY(-4px) rotate(-1deg);box-shadow:0 14px 34px rgba(255,122,156,.28)}
-.gitem:hover img{transform:scale(1.06);filter:saturate(1.1)}
-.gitem::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(138,34,71,.4));opacity:0;transition:opacity .35s}
+.gwrap{padding:24px 16px 10px}
+.gtitle{text-align:center;font-size:20px;font-weight:900;margin-bottom:4px}
+.gtitle .g{color:var(--pk2)}
+.gsub{text-align:center;color:var(--mut);font-size:13px;margin-bottom:20px}
+.gcat{font-size:17px;font-weight:900;color:var(--pk2);margin:22px 0 12px;display:flex;align-items:center;gap:8px}
+.gcat .ic{color:var(--cy);width:22px;height:22px}
+.gcount{font-size:11.5px;font-weight:600;color:var(--mut);background:rgba(255,120,200,.12);padding:2px 10px;border-radius:20px}
+.grid{column-count:2;column-gap:12px}
+@media(min-width:640px){.grid{column-count:3}}
+@media(min-width:900px){.grid{column-count:4}}
+.gitem{break-inside:avoid;margin-bottom:12px;border-radius:14px;overflow:hidden;position:relative;cursor:pointer;
+  border:1px solid var(--line);background:var(--card);display:block}
+.gitem img{width:100%;display:block;transition:transform .4s}
+.gitem:hover img{transform:scale(1.05)}
+.gitem::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(226,59,176,.25));opacity:0;transition:opacity .3s}
 .gitem:hover::after{opacity:1}
 .gempty{text-align:center;color:var(--mut);padding:50px 20px;border:1px dashed var(--line2);border-radius:16px;font-size:14px}
-/* 解鎖專區 */
-.vault{margin:16px 16px 4px;background:linear-gradient(165deg,rgba(138,34,71,.28),rgba(22,6,16,.6));border:1px solid var(--line2);border-radius:20px;padding:22px 18px;box-shadow:0 0 40px rgba(138,34,71,.35);backdrop-filter:blur(3px)}
-.vault-h{text-align:center;font-family:'Playfair Display','Noto Serif TC',serif;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px}
-.vault-h .ic{color:var(--gold);width:20px;height:20px}
-.vault-h .g{background:linear-gradient(90deg,var(--gold),var(--rose2));-webkit-background-clip:text;background-clip:text;color:transparent}
-.vault-s{text-align:center;color:var(--mut);font-size:12.5px;margin:6px 0 16px}
-.vault-prev{display:flex;gap:10px;overflow:hidden;justify-content:center;margin-bottom:16px}
-.vault-prev .p{position:relative;width:96px;height:128px;border-radius:12px;overflow:hidden;border:1px solid var(--line);flex:0 0 auto}
-.vault-prev .p img{width:100%;height:100%;object-fit:cover;filter:blur(9px) brightness(.7) saturate(1.1);transform:scale(1.1)}
-.vault-prev .p::after{content:"";position:absolute;inset:0;background:radial-gradient(circle,transparent,rgba(22,6,16,.5))}
-.vault-lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--gold)}
-.vault-cta{display:flex;flex-direction:column;gap:10px;align-items:center}
-.vbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:fit-content;max-width:100%;text-decoration:none;font-weight:700;font-size:15px;border-radius:28px;padding:12px 26px;color:#2a0713;cursor:pointer;border:none;transition:transform .12s}
-.vbtn:active{transform:scale(.97)}
-.vbtn.d{background:linear-gradient(90deg,var(--rose),var(--gold))}
-.vbtn.r{background:linear-gradient(90deg,var(--gold),var(--rose2))}
-.code-row{display:flex;gap:8px;max-width:340px;margin:14px auto 0}
-.code-row input{flex:1;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:12px;padding:11px 14px;color:var(--tx);font-size:14px;text-align:center;letter-spacing:2px}
-.code-row input::placeholder{color:var(--mut);letter-spacing:0}
-.code-row button{flex:none;background:linear-gradient(90deg,var(--rose),var(--gold));border:none;color:#2a0713;font-weight:800;border-radius:12px;padding:11px 18px;cursor:pointer}
-.code-msg{text-align:center;font-size:12.5px;margin-top:10px;min-height:16px}
-.vault-note{text-align:center;color:var(--mut);font-size:12px;margin-top:12px}
-.chan-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:fit-content;max-width:100%;margin:14px auto 0;text-decoration:none;font-weight:800;font-size:15px;border-radius:28px;padding:13px 28px;color:#fff;background:linear-gradient(90deg,var(--berry),var(--rose));box-shadow:0 6px 22px rgba(255,122,156,.35)}
 /* lightbox */
-.lb{position:fixed;inset:0;z-index:80;background:rgba(15,4,10,.95);display:none;align-items:center;justify-content:center;padding:20px}
+.lb{position:fixed;inset:0;z-index:80;background:rgba(20,6,26,.94);display:none;align-items:center;justify-content:center;padding:20px}
 .lb.on{display:flex}
-.lb img{max-width:100%;max-height:86vh;border-radius:14px;box-shadow:0 0 60px rgba(255,122,156,.4);animation:pop .3s}
-@keyframes pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
-.lb .x{position:absolute;top:16px;right:18px;width:42px;height:42px;border-radius:50%;background:rgba(232,192,125,.14);border:1px solid var(--line2);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.lb .nav{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;background:rgba(232,192,125,.14);border:1px solid var(--line2);color:#fff;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.lb img{max-width:100%;max-height:86vh;border-radius:12px;box-shadow:0 0 50px rgba(255,77,166,.4)}
+.lb .x{position:absolute;top:16px;right:18px;width:42px;height:42px;border-radius:50%;background:rgba(255,120,200,.15);border:1px solid var(--line2);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.lb .nav{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;background:rgba(255,120,200,.15);border:1px solid var(--line2);color:#fff;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .lb .prev{left:14px}.lb .next{right:14px}
-/* modal */
-.modal{position:fixed;inset:0;z-index:90;background:rgba(12,3,8,.96);display:none;align-items:center;justify-content:center;padding:20px}
+/* donate modal */
+.modal{position:fixed;inset:0;z-index:90;background:rgba(14,4,18,.96);display:none;align-items:center;justify-content:center;padding:20px}
 .modal.on{display:flex;animation:fade .25s}
 @keyframes fade{from{opacity:0}to{opacity:1}}
-.mbox{max-width:400px;width:100%;background:linear-gradient(165deg,#2a0f1c,#1a0812);border:1px solid var(--line2);border-radius:22px;padding:28px 22px;text-align:center;position:relative;box-shadow:0 0 60px rgba(255,122,156,.35)}
+.mbox{max-width:400px;width:100%;background:#2e1236;border:1px solid var(--line2);border-radius:20px;padding:26px 22px;text-align:center;position:relative;box-shadow:0 0 60px rgba(255,77,166,.4)}
 .mbox .x{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--mut);font-size:24px;cursor:pointer}
-.mbox h3{font-size:21px;font-weight:800;font-family:'Playfair Display','Noto Serif TC',serif}
-.mbox .heart{color:var(--rose);font-size:28px}
+.mbox h3{font-size:20px;font-weight:900}
+.mbox .heart{color:var(--pk);font-size:26px}
 .mbox p{color:var(--mut);font-size:13px;margin:8px 0 16px}
 .qr{width:196px;height:196px;border-radius:14px;margin:0 auto 14px;background:#fff;padding:10px;display:block}
-.netlab{font-size:12px;font-weight:700;color:var(--gold2);margin-bottom:6px}
-.addr{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
-.addr code{font-family:monospace;font-size:11.5px;color:var(--gold2);word-break:break-all;text-align:left;flex:1;user-select:all}
-.copy{flex:none;background:linear-gradient(90deg,var(--rose),var(--gold));border:none;color:#2a0713;font-weight:700;border-radius:9px;padding:8px 12px;cursor:pointer;font-size:12px}
+.netlab{font-size:12px;font-weight:800;color:var(--cy);margin-bottom:6px}
+.addr{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
+.addr code{font-family:'Orbitron',monospace;font-size:11.5px;color:var(--pk2);word-break:break-all;text-align:left;flex:1;user-select:all}
+.copy{flex:none;background:linear-gradient(90deg,var(--mg),var(--pk));border:none;color:#3a0022;font-weight:800;border-radius:9px;padding:8px 12px;cursor:pointer;font-size:12px}
 .copy:active{transform:scale(.95)}
-.thx{margin-top:14px;font-size:12.5px;color:var(--rose2)}
+.thx{margin-top:14px;font-size:12.5px;color:var(--pk2)}
 /* footer */
-.foot{text-align:center;color:var(--mut);font-size:12px;padding:34px 20px;line-height:1.9}
-.foot .sign{font-family:'Great Vibes',cursive;color:var(--gold2);font-size:22px;margin-bottom:6px}
-/* rise-in */
-.rise{opacity:0;transform:translateY(22px);transition:opacity .7s,transform .7s}
-.rise.in{opacity:1;transform:none}
+.foot{text-align:center;color:var(--mut);font-size:12px;padding:30px 20px;line-height:1.9}
+.foot .sign{color:var(--pk2);font-weight:800;font-size:13px;margin-bottom:6px}
 </style>
 </head>
 <body>
-<div class="silk"></div><div class="orb a"></div><div class="orb b"></div>
-<div class="fx" id="fx"></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
 <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-9.5-8.5C1 8.5 2.4 5 6 5c2 0 3.2 1.2 4 2.3C10.8 6.2 12 5 14 5c3.6 0 5 3.5 3.5 6.5C19 15.6 12 20 12 20z"/></symbol>
 <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
 <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
 <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></symbol>
-<symbol id="i-dice" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.3" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-coin" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></symbol>
 <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
 <symbol id="i-arw" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
 </defs></svg>
 
 <div class="wrap">
   <div class="top">
-    <div class="logo serif">阿<b>東</b> <span style="font-size:12px;color:var(--mut);font-weight:400">寫真日常</span></div>
+    <div class="logo">阿<b>東</b> <span style="font-size:12px;color:var(--mut);font-weight:400">寫真日常</span></div>
     <button class="donate-sm" onclick="openDonate()"><svg class="ic fill"><use href="#i-heart"/></svg> 抖內支持</button>
   </div>
 
   <div class="hero">
-    <div class="ava-frame" id="avaFrame"><img class="ava" id="avatar" src="photos/avatar.webp" alt="阿東" onerror="this.style.background='linear-gradient(145deg,#ff7a9c,#e8c07d)';this.removeAttribute('src')"></div>
-    <div class="sig">Adong</div>
-    <h1 class="hname serif">嗨，我是<span class="g">阿東</span></h1>
+    <img class="ava" id="avatar" src="photos/avatar.webp" alt="阿東" onerror="this.style.background='linear-gradient(145deg,#e23bb0,#4fe0ff)';this.removeAttribute('src')">
+    <h1 class="hname">嗨，我是<span class="g">阿東</span></h1>
     <p class="htag">實測筆記 · 寫真日常 —— 這裡的圖，只給支持我的你 ♡</p>
     <div class="hchips"><span class="chip">獨家寫真</span><span class="chip">支持者專屬</span><span class="chip">持續更新</span></div>
     <br>
     <button class="donate-big" onclick="openDonate()"><svg class="ic fill"><use href="#i-heart"/></svg> 抖內支持阿東</button>
   </div>
 
-  <div class="promo rise">
-    <div class="promo-t">跟著阿東一起<span class="g">玩、一起贏</span> ✦</div>
+  <div class="promo">
+    <div class="promo-t">跟著阿東一起<span class="g">玩、一起賺</span> ✦</div>
     <div class="promo-s">我玩夜色、我跟預測站報牌 —— 想一起的往下看</div>
-    <a class="promo-btn agent" id="agentBtn" href="#" target="_blank" rel="noopener"><svg class="ic"><use href="#i-dice"/></svg> 加入 YS 夜色・一起玩遊戲 <svg class="ic arw"><use href="#i-arw"/></svg></a>
-    <a class="promo-btn pred" id="predBtn" href="#" target="_blank" rel="noopener"><svg class="ic fill"><use href="#i-bolt"/></svg> 免費 7 天・運動賽事預測 <svg class="ic arw"><use href="#i-arw"/></svg></a>
+    <a class="promo-btn agent" id="agentBtn" href="#" target="_blank" rel="noopener"><svg class="ic"><use href="#i-coin"/></svg> 加入夜色代理・賺佣金 <svg class="ic arw"><use href="#i-arw"/></svg></a>
+    <a class="promo-btn pred" id="predBtn" href="#" target="_blank" rel="noopener"><svg class="ic fill"><use href="#i-bolt"/></svg> 免費領 7 天 VIP 報牌 <svg class="ic arw"><use href="#i-arw"/></svg></a>
   </div>
 
   <div class="gwrap">
-    <div class="gtitle">最新<span class="g">寫真</span></div>
+    <div class="gtitle"><svg class="ic" style="color:var(--pk2)"><use href="#i-cam"/></svg> 最新<span class="g">寫真</span></div>
     <div class="gsub">點圖看大圖 · 左右滑看下一張</div>
     <div id="gallery"></div>
-    <div class="gempty" id="empty" style="display:none"><svg class="ic" style="width:26px;height:26px;color:var(--rose2)"><use href="#i-spark"/></svg><br>寫真整理中，很快就更新 ♡</div>
-  </div>
-
-  <!-- 🔒 解鎖專區 -->
-  <div class="vault rise" id="vault">
-    <div class="vault-h"><svg class="ic"><use href="#i-lock"/></svg> <span class="g">解鎖專區</span></div>
-    <div class="vault-s">更好看的高清寫真 ＋ 私密影片，只給解鎖的你 ♡</div>
-
-    <div id="vaultLocked">
-      <div class="vault-prev" id="vaultPrev"></div>
-      <div class="vault-cta">
-        <button class="vbtn d" onclick="openDonate()"><svg class="ic fill"><use href="#i-heart"/></svg> 抖內解鎖</button>
-        <a class="vbtn r" id="vaultAgent" href="#" target="_blank" rel="noopener"><svg class="ic"><use href="#i-dice"/></svg> 加入夜色・解鎖</a>
-      </div>
-      <div class="code-row"><input id="codeInput" type="text" placeholder="輸入解鎖碼" autocomplete="off"><button onclick="tryUnlock()">解鎖</button></div>
-      <div class="code-msg" id="codeMsg"></div>
-      <div class="vault-note">抖內 或 加入夜色後，私訊阿東拿解鎖碼 ♡</div>
-    </div>
-
-    <div id="vaultUnlocked" style="display:none">
-      <div class="grid" id="vipGrid"></div>
-      <a class="chan-btn" id="chanBtn" href="#" target="_blank" rel="noopener"><svg class="ic fill"><use href="#i-heart"/></svg> 高清照＋私密影片・進私密頻道 →</a>
-    </div>
+    <div class="gempty" id="empty" style="display:none"><svg class="ic" style="width:26px;height:26px;color:var(--pk2)"><use href="#i-spark"/></svg><br>寫真整理中，很快就更新 ♡</div>
   </div>
 
   <div class="foot">
-    <div class="sign">thank you ♡</div>
-    謝謝每一個支持我的你，你的抖內是我持續創作的動力。
+    <div class="sign">阿東 ♡ 謝謝每一個支持我的你</div>
+    你的抖內是我持續創作的動力。
   </div>
 </div>
 
@@ -270,80 +190,36 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 var WALLET='TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';   // ← 這裡換成阿東的收款地址（建議獨立新錢包）
 var NETWORK='USDT · TRC20 網路';                     // 網路標示
 var AGENT_URL='https://ys89.bet/?proxy=rs82gq&utm_source=adong&utm_medium=fanpage&utm_campaign=agent';   // 夜色代理/註冊(阿東代理碼 rs82gq)
-var PREDICT_URL='https://ad-sportpage.pages.dev/?kol=adong&utm_source=adong&utm_medium=fanpage&utm_campaign=predict';   // 預測站廣告 LP（帶 KOL=adong → 追蹤帶量）
-var UNLOCK_CODE='adong520';                          // ← 解鎖碼(抖內/註冊後你私訊給支持者,可自行改)
-var VIP_CHANNEL_URL='https://t.me/REPLACE私密頻道連結';  // ← 私密 TG 頻道(高清照+影片放這,粉絲解鎖後點進)
+var PREDICT_URL='https://ad-sportpage.pages.dev/?utm_source=adong&utm_medium=fanpage&utm_campaign=predict';   // 預測站廣告 LP（免費7天VIP → 導夜色註冊）
 // =====================================
-(function(){var a=document.getElementById('agentBtn'),p=document.getElementById('predBtn');if(a)a.href=AGENT_URL;if(p)p.href=PREDICT_URL;
-  var va=document.getElementById('vaultAgent'),cb=document.getElementById('chanBtn');if(va)va.href=AGENT_URL;if(cb)cb.href=VIP_CHANNEL_URL;})();
+(function(){var a=document.getElementById('agentBtn'),p=document.getElementById('predBtn');if(a)a.href=AGENT_URL;if(p)p.href=PREDICT_URL;})();
 document.getElementById('addr').textContent=WALLET;
 document.getElementById('netlab').textContent=NETWORK;
 document.getElementById('qr').src='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data='+encodeURIComponent(WALLET);
-function openDonate(){document.getElementById('modal').classList.add('on');track('donate_open');}
-// GA4 CTA 點擊事件
-(function(){function on(id,n,extra){var el=document.getElementById(id);if(el)el.addEventListener('click',function(){track(n,extra||{});});}
-  on('agentBtn','click_agent',{loc:'promo'});on('predBtn','click_predict',{loc:'promo'});
-  on('vaultAgent','click_agent',{loc:'vault'});on('chanBtn','click_channel');})();
+function openDonate(){document.getElementById('modal').classList.add('on');}
 function closeDonate(){document.getElementById('modal').classList.remove('on');}
-function copyAddr(){navigator.clipboard&&navigator.clipboard.writeText(WALLET);track('donate_copy');var t=document.getElementById('thx');t.textContent='✓ 地址已複製！謝謝你 ♡';setTimeout(function(){t.textContent='謝謝你的支持，我會繼續努力 ♡';},2200);}
+function copyAddr(){navigator.clipboard&&navigator.clipboard.writeText(WALLET);var t=document.getElementById('thx');t.textContent='✓ 地址已複製！謝謝你 ♡';setTimeout(function(){t.textContent='謝謝你的支持，我會繼續努力 ♡';},2200);}
 document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeDonate();});
 
-// ===== 漂浮花瓣 / 愛心 =====
-(function(){var fx=document.getElementById('fx');var roses=['#ff7a9c','#ffb2c4','#e8c07d','#f7e4bb'];for(var i=0;i<22;i++){var d=document.createElement('div');var heart=Math.random()<0.32;d.className='petal'+(heart?' h':'');var c=roses[i%roses.length];if(heart){d.textContent='♡';}else{var s=8+Math.random()*12;d.style.width=s+'px';d.style.height=s*1.1+'px';d.style.background='linear-gradient(145deg,'+c+',rgba(255,255,255,.2))';}d.style.left=(Math.random()*100)+'%';d.style.animationDuration=(9+Math.random()*10)+'s';d.style.animationDelay=(-Math.random()*18)+'s';d.style.opacity=(.3+Math.random()*.4);fx.appendChild(d);}})();
-// ===== hero 頭像視差 =====
-var avaF=document.getElementById('avaFrame');
-window.addEventListener('scroll',function(){if(!avaF)return;var y=window.scrollY;avaF.style.transform='rotate(-3deg) translateY('+(y*0.12)+'px)';},{passive:true});
-// ===== rise-in =====
-var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}})},{threshold:.12});
-document.querySelectorAll('.rise').forEach(function(el){io.observe(el);});
-
 // ===== 相簿：讀 photos.json（依系列分類）=====
-var PHOTOS=[],cur=0;
-// 每個相簿的故事文案（可自行改 d 的內容）
-var SECTIONS=[
- {k:'soccer',n:'世足賽系列',ic:'i-bolt',d:'跟著世界盃一起瘋 —— 球場邊最亮的那個就是我，穿上球衣為我的主隊尖叫 ⚽'},
- {k:'cafe',n:'下午茶系列',ic:'i-cam',d:'沒有比賽的午後，一杯咖啡、一點慵懶 —— 這是只給你們看的悠閒時光 ☕'},
- {k:'life',n:'生活照系列',ic:'i-heart',d:'沒有濾鏡的日常，最真實、最放鬆的阿東，都在這裡 ♡'},
- {k:'other',n:'寫真',ic:'i-cam',d:''}
-];
+var PHOTOS=[],cur=0;   // PHOTOS = 全部圖(供燈箱左右切換)
+var SECTIONS=[{k:'soccer',n:'世足賽系列',ic:'i-bolt'},{k:'cafe',n:'下午茶系列',ic:'i-cam'},{k:'other',n:'寫真',ic:'i-cam'}];
 fetch('photos.json?v='+Date.now()).then(function(r){return r.json();}).then(function(data){
-  if(Array.isArray(data))data={other:data};
+  if(Array.isArray(data))data={other:data};   // 舊格式相容
   var g=document.getElementById('gallery'),html='';
   SECTIONS.forEach(function(s){
     var list=(data[s.k]||[]).filter(function(f){return !/avatar\./i.test(f);});
     if(!list.length)return;
-    html+='<div class="gcat"><svg class="ic"><use href="#'+s.ic+'"/></svg> '+s.n+' <span class="gcount">'+list.length+' 張</span></div>';
-    if(s.d)html+='<div class="gdesc">'+s.d+'</div>';
-    html+='<div class="grid">';
+    html+='<div class="gcat"><svg class="ic"><use href="#'+s.ic+'"/></svg> '+s.n+' <span class="gcount">'+list.length+' 張</span></div><div class="grid">';
     list.forEach(function(f){var i=PHOTOS.length;PHOTOS.push(f);html+='<a class="gitem" onclick="openLb('+i+')"><img loading="lazy" src="photos/'+f+'" alt="阿東寫真"></a>';});
     html+='</div>';
   });
-  if(PHOTOS.length)g.innerHTML=html;else document.getElementById('empty').style.display='block';
-  buildVault(data);
+  if(!PHOTOS.length){document.getElementById('empty').style.display='block';return;}
+  g.innerHTML=html;
 }).catch(function(){document.getElementById('empty').style.display='block';});
-
-// ===== 🔒 解鎖專區 =====
-function buildVault(data){
-  var vip=(data.vip||[]);
-  // 模糊預覽:優先用 vip 照,沒有就拿公開照當 teaser
-  var teaser=(vip.length?vip:[].concat(data.life||[],data.cafe||[],data.soccer||[])).slice(0,3);
-  document.getElementById('vaultPrev').innerHTML=teaser.map(function(f){return '<div class="p"><img src="photos/'+f+'" alt=""><div class="vault-lock"><svg class="ic fill" style="width:22px;height:22px"><use href="#i-lock"/></svg></div></div>';}).join('');
-  // 解鎖後的 vip 照(可點大圖)
-  var vg=document.getElementById('vipGrid');
-  if(vip.length){vg.innerHTML=vip.map(function(f){var i=PHOTOS.length;PHOTOS.push(f);return '<a class="gitem" onclick="openLb('+i+')"><img loading="lazy" src="photos/'+f+'" alt="阿東高清寫真"></a>';}).join('');}
-  else{vg.innerHTML='<div class="vault-note" style="padding:14px 0">高清寫真陸續更新中，影片先進私密頻道看 ♡</div>';}
-  if(localStorage.getItem('adong_vault')==='1')revealVault();
-}
-function revealVault(){document.getElementById('vaultLocked').style.display='none';document.getElementById('vaultUnlocked').style.display='block';}
-function tryUnlock(){
-  var v=(document.getElementById('codeInput').value||'').trim().toLowerCase();
-  var m=document.getElementById('codeMsg');
-  if(v===String(UNLOCK_CODE).trim().toLowerCase()){localStorage.setItem('adong_vault','1');track('unlock_success');m.style.color='var(--gold2)';m.textContent='✓ 解鎖成功！高清內容出現了 ♡';setTimeout(revealVault,600);}
-  else{m.style.color='var(--rose2)';m.textContent='解鎖碼不對，抖內或加入夜色後私訊阿東拿碼 ♡';}
-}
 function openLb(i){cur=i;document.getElementById('lbImg').src='photos/'+PHOTOS[i];document.getElementById('lb').classList.add('on');}
 function closeLb(){document.getElementById('lb').classList.remove('on');}
-function lbStep(d){cur=(cur+d+PHOTOS.length)%PHOTOS.length;var im=document.getElementById('lbImg');im.style.animation='none';im.offsetHeight;im.style.animation='';im.src='photos/'+PHOTOS[cur];}
+function lbStep(d){cur=(cur+d+PHOTOS.length)%PHOTOS.length;document.getElementById('lbImg').src='photos/'+PHOTOS[cur];}
 document.getElementById('lb').addEventListener('click',function(e){if(e.target===this)closeLb();});
 document.addEventListener('keydown',function(e){if(!document.getElementById('lb').classList.contains('on'))return;if(e.key==='Escape')closeLb();if(e.key==='ArrowLeft')lbStep(-1);if(e.key==='ArrowRight')lbStep(1);});
 </script>
