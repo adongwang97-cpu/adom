@@ -251,12 +251,11 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
   <!-- 🔒 VIP 專區：單張／整本／訂閱，直接解鎖 -->
   <div class="vault rise" id="vault">
     <div class="vault-h"><svg class="ic"><use href="#i-lock"/></svg> <span class="g">VIP 專區</span></div>
-    <div class="vault-s">更好看的高清寫真——單張 $5、整本相簿 $10、訂閱 $30/月全部解鎖 ♡</div>
+    <div class="vault-s">更好看的高清寫真——單張 $5、訂閱 $30/月全部解鎖 ♡</div>
 
     <div class="vip-name"><input type="text" id="vipName" placeholder="暱稱(感謝牆顯示，可留空)" maxlength="24"></div>
     <div class="vault-cta">
       <button class="vbtn d" onclick="vipBuy('sub')"><svg class="ic fill"><use href="#i-heart"/></svg> 訂閱 VIP・$30/月（全部解鎖＋私密頻道）</button>
-      <button class="vbtn r" onclick="vipBuy('album','vip')"><svg class="ic"><use href="#i-dice"/></svg> 整本相簿一次解鎖・$10</button>
     </div>
 
     <div class="code-row"><input id="codeInput" type="text" placeholder="輸入存取碼查詢解鎖狀態" autocomplete="off"><button onclick="checkAccessCode()">查詢</button></div>
