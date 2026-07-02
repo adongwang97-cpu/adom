@@ -6,6 +6,13 @@ compatibility_date = "2024-09-23"
 directory = "./"
 binding = "ASSETS"
 
+# D1 資料庫綁定：寫在這裡才不會被每次 `wrangler deploy` 自動部署沖掉
+# (儀表板手動加的 binding 沒寫進這檔案的話，下次 push 部署會被重置成沒綁定)
+[[d1_databases]]
+binding = "DB"
+database_name = "adom-db"
+database_id = "fb5de068-efad-482e-a152-79d13732e39e"
+
 # ── 以下要在 CF 儀表板手動加(見 使用說明.txt「後台設定」章節)──
-# D1 資料庫 → binding 名稱填 DB(建好+綁定後，第一次請求會自動建表，不用手動貼 SQL)
 # Secrets → ADMIN_PASS(後台密碼) / ADMIN_SECRET(簽章用亂碼,不用記) / OXAPAY_API_KEY(抖內金流，阿東專屬)
+# Secrets 不受這個問題影響，設定後不會被 deploy 沖掉，不用寫進這個檔案。
