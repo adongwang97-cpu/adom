@@ -101,9 +101,10 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 .gtitle{text-align:center;font-size:24px;font-weight:800;margin-bottom:4px;font-family:'Playfair Display','Noto Serif TC',serif}
 .gtitle .g{background:linear-gradient(90deg,var(--rose2),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
 .gsub{text-align:center;color:var(--mut);font-size:13px;margin-bottom:20px;font-style:italic}
-.gcat{font-size:18px;font-weight:800;color:var(--gold2);margin:24px 4px 14px;display:flex;align-items:center;gap:9px;font-family:'Playfair Display','Noto Serif TC',serif}
+.gcat{font-size:18px;font-weight:800;color:var(--gold2);margin:24px 4px 6px;display:flex;align-items:center;gap:9px;font-family:'Playfair Display','Noto Serif TC',serif}
 .gcat::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line2),transparent)}
 .gcat .ic{color:var(--rose2);width:20px;height:20px}
+.gdesc{color:var(--mut);font-size:13px;font-style:italic;margin:0 4px 14px;line-height:1.6}
 .gcount{font-size:11.5px;font-weight:500;color:var(--mut);background:rgba(232,192,125,.1);padding:2px 11px;border-radius:20px;font-family:'Noto Sans TC'}
 .grid{display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;padding:2px 2px 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .grid::-webkit-scrollbar{display:none}
@@ -298,14 +299,22 @@ document.querySelectorAll('.rise').forEach(function(el){io.observe(el);});
 
 // ===== 相簿：讀 photos.json（依系列分類）=====
 var PHOTOS=[],cur=0;
-var SECTIONS=[{k:'soccer',n:'世足賽系列',ic:'i-bolt'},{k:'cafe',n:'下午茶系列',ic:'i-cam'},{k:'life',n:'生活照系列',ic:'i-heart'},{k:'other',n:'寫真',ic:'i-cam'}];
+// 每個相簿的故事文案（可自行改 d 的內容）
+var SECTIONS=[
+ {k:'soccer',n:'世足賽系列',ic:'i-bolt',d:'跟著世界盃一起瘋 —— 球場邊最亮的那個就是我，穿上球衣為我的主隊尖叫 ⚽'},
+ {k:'cafe',n:'下午茶系列',ic:'i-cam',d:'沒有比賽的午後，一杯咖啡、一點慵懶 —— 這是只給你們看的悠閒時光 ☕'},
+ {k:'life',n:'生活照系列',ic:'i-heart',d:'沒有濾鏡的日常，最真實、最放鬆的阿東，都在這裡 ♡'},
+ {k:'other',n:'寫真',ic:'i-cam',d:''}
+];
 fetch('photos.json?v='+Date.now()).then(function(r){return r.json();}).then(function(data){
   if(Array.isArray(data))data={other:data};
   var g=document.getElementById('gallery'),html='';
   SECTIONS.forEach(function(s){
     var list=(data[s.k]||[]).filter(function(f){return !/avatar\./i.test(f);});
     if(!list.length)return;
-    html+='<div class="gcat"><svg class="ic"><use href="#'+s.ic+'"/></svg> '+s.n+' <span class="gcount">'+list.length+' 張</span></div><div class="grid">';
+    html+='<div class="gcat"><svg class="ic"><use href="#'+s.ic+'"/></svg> '+s.n+' <span class="gcount">'+list.length+' 張</span></div>';
+    if(s.d)html+='<div class="gdesc">'+s.d+'</div>';
+    html+='<div class="grid">';
     list.forEach(function(f){var i=PHOTOS.length;PHOTOS.push(f);html+='<a class="gitem" onclick="openLb('+i+')"><img loading="lazy" src="photos/'+f+'" alt="阿東寫真"></a>';});
     html+='</div>';
   });
