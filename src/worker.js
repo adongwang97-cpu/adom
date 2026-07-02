@@ -48,7 +48,7 @@ const ALLOWED_ICONS = new Set(['i-heart', 'i-cam', 'i-bolt', 'i-spark', 'i-lock'
 
 // ── 私密頻道單次邀請連結：Silver/Gold 抖內確認付款後，用 bot 現生一條「只能用一次」的邀請連結，
 //    不怕連結被轉傳濫用。TG_BOT_TOKEN 是 CF secret；頻道數字 ID 填這裡(bot 要先被加成頻道管理員)。
-const TG_CHANNEL_ID = 'REPLACE_頻道數字ID';   // ← 阿東給我頻道ID後，我改這裡（例如 -1001234567890）
+const TG_CHANNEL_ID = '-1004415183915';   // 阿東寫真筆記(私密頻道)
 async function tgCreateOneTimeInvite(env) {
   if (!env.TG_BOT_TOKEN || TG_CHANNEL_ID.startsWith('REPLACE')) return null;
   try {
