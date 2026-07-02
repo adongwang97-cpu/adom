@@ -49,6 +49,13 @@ select{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px
 .themeCard{border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer;font-size:13px}
 .themeCard.active{border-color:var(--gold);background:rgba(232,192,125,.1)}
 .dim{color:var(--mut);font-size:12.5px}
+.postRow{display:grid;grid-template-columns:1fr 140px auto;gap:8px;margin-top:8px;align-items:start}
+.postList{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.postItem{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.postItem .txt{flex:1;font-size:13px;line-height:1.5}
+.postItem .meta{font-size:11px;color:var(--mut);margin-top:3px}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(232,192,125,.14);color:var(--gold2)}
+.badge.warn{background:rgba(255,90,90,.15);color:var(--danger)}
 </style>
 </head>
 <body>
@@ -78,6 +85,19 @@ select{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px
       <h2>🎨 前端風格</h2>
       <div class="themeRow" id="themeRow"></div>
       <div class="dim" style="margin-top:8px">目前只有玫瑰金 Glam 一套；要再開發新風格（暗夜/粉紫/極簡）跟阿東說一聲即可加。</div>
+    </div>
+
+    <div class="panel">
+      <h2>📢 頻道自動發文 <span id="tgStatusBadge"></span></h2>
+      <div class="dim">預先寫好文案，每天定時(台灣晚上8點)自動輪播發到私密頻道——最久沒發過的優先，新增/刪除都自動處理，不用手動排順序。</div>
+      <div class="postRow">
+        <textarea id="postCaption" placeholder="文案內容…" style="min-height:60px"></textarea>
+        <select id="postPhoto"><option value="">(純文字，不帶圖)</option></select>
+        <button class="btn sm" onclick="addPost()" style="height:fit-content">加入排程</button>
+      </div>
+      <div id="postMsg" class="dim" style="margin-top:6px;min-height:16px"></div>
+      <div style="margin-top:10px"><button class="btn gh sm" onclick="sendPostNow()">🚀 立刻試發一則(驗證設定用)</button></div>
+      <div class="postList" id="postList"></div>
     </div>
 
     <div class="panel">
@@ -142,6 +162,54 @@ function loadData(){
     STATE.data=res.data;
     renderTheme();
     renderSections();
+    fillPhotoPicker();
+  });
+  loadPosts();
+}
+
+function fillPhotoPicker(){
+  var sel=document.getElementById('postPhoto');
+  var opts='<option value="">(純文字，不帶圖)</option>';
+  Object.keys(STATE.data.photos||{}).forEach(function(cat){
+    (STATE.data.photos[cat]||[]).forEach(function(f){ opts+='<option value="'+f+'">'+cat+' / '+f+'</option>'; });
+  });
+  sel.innerHTML=opts;
+}
+
+function loadPosts(){
+  api('/api/admin/posts').then(function(res){
+    if(!res.ok)return;
+    var badge=document.getElementById('tgStatusBadge');
+    badge.innerHTML=res.data.tg_ready?'<span class="badge">✓ bot 已設定</span>':'<span class="badge warn">⚠ bot 尚未設定(TG_BOT_TOKEN/頻道ID)，排到也發不出去</span>';
+    renderPosts(res.data.list||[]);
+  });
+}
+function renderPosts(list){
+  var el=document.getElementById('postList');
+  el.innerHTML=list.map(function(p){
+    return '<div class="postItem"><div class="txt">'+esc(p.caption)+(p.photo?'<div class="meta">📷 '+esc(p.photo)+'</div>':'')+'<div class="meta">'+(p.posted_at?'上次發出：'+esc(p.posted_at):'尚未發過')+'</div></div><button class="iconbtn" onclick="deletePost('+p.id+')">✕</button></div>';
+  }).join('')||'<div class="dim">尚無排程文案</div>';
+}
+function addPost(){
+  var caption=(document.getElementById('postCaption').value||'').trim();
+  var photo=document.getElementById('postPhoto').value||null;
+  var msg=document.getElementById('postMsg');
+  if(!caption){msg.textContent='請輸入文案';msg.style.color='var(--danger)';return;}
+  api('/api/admin/post',{method:'POST',body:JSON.stringify({caption:caption,photo:photo})}).then(function(res){
+    if(res.ok){document.getElementById('postCaption').value='';msg.textContent='✓ 已加入排程';msg.style.color='var(--ok)';loadPosts();}
+    else{msg.textContent='失敗：'+(res.data.error||'');msg.style.color='var(--danger)';}
+  });
+}
+function deletePost(id){
+  if(!confirm('確定刪除這則排程文案？'))return;
+  api('/api/admin/post/delete',{method:'POST',body:JSON.stringify({id:id})}).then(function(){loadPosts();});
+}
+function sendPostNow(){
+  var msg=document.getElementById('postMsg');
+  msg.textContent='發送中…';msg.style.color='';
+  api('/api/admin/post/send-now',{method:'POST'}).then(function(res){
+    if(res.data.ok){msg.textContent='✓ 已發送到頻道';msg.style.color='var(--ok)';loadPosts();}
+    else{msg.textContent='失敗：'+(res.data.error||'');msg.style.color='var(--danger)';}
   });
 }
 

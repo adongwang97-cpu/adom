@@ -19,9 +19,13 @@
  *   POST /api/donate/webhook     OxaPay 付款完成回調（header HMAC 簽章）
  *   GET  /api/donate/status      ?order=xxx → 感謝頁輪詢用
  *   GET  /api/supporters         公開，感謝牆用（最近抖內暱稱，來自 donations 表）
+ * 頻道自動發文（預先寫好文案輪播，每天定時發到私密頻道）：
+ *   GET  /api/admin/posts        列出所有排程文案
+ *   POST /api/admin/post         新增 {caption, photo}（photo 是 photos/ 底下的檔名，可留空=純文字）
+ *   POST /api/admin/post/delete  {id}
  * 其餘 → 靜態檔(env.ASSETS)
  *
- * 需要的 CF 綁定：D1(binding名稱=DB) + Secrets(ADMIN_PASS/ADMIN_SECRET/OXAPAY_API_KEY)
+ * 需要的 CF 綁定：D1(binding名稱=DB) + Secrets(ADMIN_PASS/ADMIN_SECRET/OXAPAY_API_KEY/TG_BOT_TOKEN)
  * 表格首次使用自動建立(CREATE TABLE IF NOT EXISTS)，不用手動貼 SQL。
  */
 
@@ -56,6 +60,27 @@ async function tgCreateOneTimeInvite(env) {
     const data = await res.json().catch(() => ({}));
     return (data && data.ok && data.result && data.result.invite_link) || null;
   } catch { return null; }
+}
+
+// ── 頻道自動發文：純文字用 sendMessage；有帶圖用 sendPhoto(photo 給公開圖網址，Telegram 自己抓) ──
+async function tgSendToChannel(env, origin, caption, photoFile) {
+  if (!env.TG_BOT_TOKEN || TG_CHANNEL_ID.startsWith('REPLACE')) return false;
+  try {
+    if (photoFile) {
+      const res = await fetch(`https://api.telegram.org/bot${env.TG_BOT_TOKEN}/sendPhoto`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ chat_id: TG_CHANNEL_ID, photo: `${origin}/photos/${photoFile}`, caption }),
+      });
+      const d = await res.json().catch(() => ({}));
+      return !!(d && d.ok);
+    }
+    const res = await fetch(`https://api.telegram.org/bot${env.TG_BOT_TOKEN}/sendMessage`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: TG_CHANNEL_ID, text: caption }),
+    });
+    const d = await res.json().catch(() => ({}));
+    return !!(d && d.ok);
+  } catch { return false; }
 }
 
 const json = (data, status = 200, extraHeaders) => new Response(JSON.stringify(data), {
@@ -100,6 +125,7 @@ async function ensureSchema(env) {
     `CREATE TABLE IF NOT EXISTS photo_state (cat TEXT NOT NULL, file TEXT NOT NULL, sort_order INTEGER, deleted INTEGER DEFAULT 0, PRIMARY KEY (cat, file))`,
     `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
     `CREATE TABLE IF NOT EXISTS donations (order_id TEXT PRIMARY KEY, tier TEXT NOT NULL, name TEXT, amount REAL NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now')), paid_at TEXT)`,
+    `CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY AUTOINCREMENT, caption TEXT NOT NULL, photo TEXT, posted_at TEXT, created_at TEXT DEFAULT (datetime('now')))`,
   ];
   try {
     for (const s of stmts) await env.DB.prepare(s).run();
@@ -190,7 +216,21 @@ async function oxaVerifySign(rawBody, headerSig, apiKey) {
 }
 const OXA_PAID = new Set(['Paid', 'paid']);
 
+// ── 頻道自動發文：挑「最久沒發過(或從沒發過)」的一則發出去，天然輪播，新增/刪除都自動處理 ──
+async function runScheduledPost(env, origin) {
+  if (!env.DB) return { ok: false, error: 'db_not_bound' };
+  await ensureSchema(env);
+  const next = await env.DB.prepare('SELECT id, caption, photo FROM posts ORDER BY posted_at IS NOT NULL, posted_at ASC LIMIT 1').first().catch(() => null);
+  if (!next) return { ok: false, error: 'no_posts_queued' };
+  const sent = await tgSendToChannel(env, origin, next.caption, next.photo);
+  if (sent) await env.DB.prepare("UPDATE posts SET posted_at=datetime('now') WHERE id=?").bind(next.id).run();
+  return { ok: sent, id: next.id, error: sent ? undefined : 'send_failed(檢查 TG_BOT_TOKEN / TG_CHANNEL_ID / bot 是否為頻道管理員)' };
+}
+
 export default {
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runScheduledPost(env, `https://adom.adongwang97.workers.dev`));
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
     const p = url.pathname;
@@ -356,6 +396,34 @@ export default {
           const { theme } = await request.json().catch(() => ({}));
           await setSetting(env, 'theme', sanitizeKey(theme) || 'glam');
           return json({ ok: true });
+        }
+
+        // ── 頻道自動發文排程 ──
+        if (p === '/api/admin/posts' && method === 'GET') {
+          if (!env.DB) return json({ list: [] });
+          const { results } = await env.DB.prepare('SELECT id, caption, photo, posted_at FROM posts ORDER BY id DESC').all().catch(() => ({ results: [] }));
+          return json({ list: results || [], tg_ready: !!(env.TG_BOT_TOKEN && !TG_CHANNEL_ID.startsWith('REPLACE')) });
+        }
+        if (p === '/api/admin/post' && method === 'POST') {
+          if (!env.DB) return json({ error: 'db_not_bound' }, 503);
+          const body = await request.json().catch(() => ({}));
+          const caption = String(body.caption || '').slice(0, 900);
+          if (!caption) return json({ error: 'missing_caption' }, 400);
+          const photo = body.photo ? String(body.photo).replace(/[^\w.\/-]/g, '').slice(0, 80) : null;
+          await env.DB.prepare('INSERT INTO posts (caption, photo) VALUES (?,?)').bind(caption, photo).run();
+          return json({ ok: true });
+        }
+        if (p === '/api/admin/post/delete' && method === 'POST') {
+          if (!env.DB) return json({ error: 'db_not_bound' }, 503);
+          const { id } = await request.json().catch(() => ({}));
+          if (!id) return json({ error: 'missing_id' }, 400);
+          await env.DB.prepare('DELETE FROM posts WHERE id=?').bind(id).run();
+          return json({ ok: true });
+        }
+        // 手動立刻試發一則(方便驗證 bot/頻道設定對不對，不受排程時間限制)
+        if (p === '/api/admin/post/send-now' && method === 'POST') {
+          const r = await runScheduledPost(env, url.origin);
+          return json(r);
         }
 
         return json({ error: 'unknown_route' }, 404);

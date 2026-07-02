@@ -13,6 +13,12 @@ binding = "DB"
 database_name = "adom-db"
 database_id = "fb5de068-efad-482e-a152-79d13732e39e"
 
+# 頻道自動發文排程：每天 UTC 12:00 = 台灣晚上 20:00 觸發一次
+# (要改頻率就改這行；例如 "0 */6 * * *" = 每6小時一次)
+[triggers]
+crons = ["0 12 * * *"]
+
 # ── 以下要在 CF 儀表板手動加(見 使用說明.txt「後台設定」章節)──
 # Secrets → ADMIN_PASS(後台密碼) / ADMIN_SECRET(簽章用亂碼,不用記) / OXAPAY_API_KEY(抖內金流，阿東專屬)
+#         / TG_BOT_TOKEN(@Adombaby520_bot 的 API token，頻道自動發文用)
 # Secrets 不受這個問題影響，設定後不會被 deploy 沖掉，不用寫進這個檔案。
