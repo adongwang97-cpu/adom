@@ -1,10 +1,4 @@
 {
-  "soccer": [
-    "soccer-01.webp",
-    "soccer-02.webp",
-    "soccer-03.webp",
-    "soccer-04.webp"
-  ],
   "cafe": [
     "cafe-01.webp",
     "cafe-02.webp",
@@ -15,6 +9,21 @@
   "life": [
     "life-01.webp",
     "life-02.webp",
-    "life-03.webp"
+    "life-03.webp",
+    "life-04.webp",
+    "life-05.webp"
+  ],
+  "soccer": [
+    "soccer-01.webp",
+    "soccer-02.webp",
+    "soccer-03.webp",
+    "soccer-04.webp",
+    "soccer-05.webp",
+    "soccer-06.webp",
+    "soccer-07.webp",
+    "soccer-08.webp"
+  ],
+  "work": [
+    "work-01.webp"
   ]
 }

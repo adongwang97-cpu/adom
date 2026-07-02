@@ -1,17 +1,14 @@
-// 掃 photos/ 依前綴分類產生 photos.json
-//   公開：soccer- / cafe- / life-    解鎖專區：vip-(高清照,鎖起來)
-// 用法：把圖丟 photos/ 命名好前綴 → node build-gallery.mjs
+// 掃 photos/ 依「檔名前綴-」自動分類產生 photos.json（任意前綴都通用，不用改這支腳本）
+//   例：soccer-01.webp → soccer 分類；travel-03.webp → travel 分類；vip-01.webp → 解鎖專區
+// 用法：把圖丟 photos/ 命名好「分類代碼-序號」→ node build-gallery.mjs
 import { readdirSync, writeFileSync } from 'fs';
 const exts = /\.(webp|jpg|jpeg|png|gif)$/i;
 const files = readdirSync('photos').filter(f => exts.test(f) && !/^avatar\./i.test(f)).sort();
-const out = { soccer: [], cafe: [], life: [], vip: [], other: [] };
+const out = {};
 for (const f of files) {
-  if (/^soccer-/i.test(f)) out.soccer.push(f);
-  else if (/^cafe-/i.test(f)) out.cafe.push(f);
-  else if (/^life-/i.test(f)) out.life.push(f);
-  else if (/^vip-/i.test(f)) out.vip.push(f);
-  else out.other.push(f);
+  const m = f.match(/^([a-z0-9]+)-/i);
+  const cat = m ? m[1].toLowerCase() : 'other';
+  (out[cat] = out[cat] || []).push(f);
 }
-for (const k of ['life','vip','other']) if (!out[k].length) delete out[k];
 writeFileSync('photos.json', JSON.stringify(out, null, 2));
-console.log('photos.json → 世足 ' + out.soccer.length + ' / 下午茶 ' + out.cafe.length + ' / 生活 ' + (out.life?out.life.length:0) + ' / 🔒VIP ' + (out.vip?out.vip.length:0));
+console.log('photos.json → ' + Object.entries(out).map(([k, v]) => k + ' ' + v.length).join(' / '));

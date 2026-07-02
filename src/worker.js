@@ -38,6 +38,7 @@ const DEFAULT_SECTIONS = [
   { k: 'soccer', n: '世足賽系列', ic: 'i-bolt', d: '跟著世界盃一起瘋 —— 球場邊最亮的那個就是我，穿上球衣為我的主隊尖叫 ⚽' },
   { k: 'cafe', n: '下午茶系列', ic: 'i-cam', d: '沒有比賽的午後，一杯咖啡、一點慵懶 —— 這是只給你們看的悠閒時光 ☕' },
   { k: 'life', n: '生活照系列', ic: 'i-heart', d: '沒有濾鏡的日常，最真實、最放鬆的阿東，都在這裡 ♡' },
+  { k: 'work', n: '工作系列', ic: 'i-spark', d: '換上另一種樣子，認真的阿東也想讓你看看 💼' },
 ];
 const ALLOWED_ICONS = new Set(['i-heart', 'i-cam', 'i-bolt', 'i-spark', 'i-lock', 'i-dice', 'i-coin']);
 
