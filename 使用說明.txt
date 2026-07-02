@@ -1,43 +1,61 @@
 阿東寫真站 — 使用說明
 ==============================
+網站：https://adom.adongwang97.workers.dev/
+後台：https://adom.adongwang97.workers.dev/admin/
 
-【怎麼放圖(放一堆圖就看這個)】
-1. 把圖片檔(建議 .webp,也接受 jpg/png)丟進 photos/ 資料夾。
-2. 更新圖片清單,兩種方式擇一:
-   (A) 會用終端機 → 在本資料夾執行:  node build-gallery.mjs
-       它會自動掃描 photos/ 產生 photos.json。
-   (B) 不會終端機 → 直接編輯 photos.json,每張圖加一行檔名,例如:
-       [
-         "01.webp",
-         "02.webp",
-         "03.webp"
-       ]
-   ※ 檔名叫 avatar.* 的會被當大頭貼、不進相簿。
+【後台管理(推薦，會用瀏覽器點滑鼠就會用)】
+去 /admin/ 輸入密碼登入(密碼是你在 CF 設的 ADMIN_PASS，見下方「後台設定」)，可以：
+- 每個相簿分類：編輯故事文案、刪除/排序照片、上傳新照片(自動轉webp，不用另外裝軟體)
+- 新增/刪除/排序整個相簿分類
+- 上傳圖片：選圖就好，瀏覽器會自動幫你轉成 webp 再上傳，不用自己轉檔
+- 主題風格：目前只有「玫瑰金 Glam」一套，要加新風格跟我說一聲
 
-【換大頭貼】
-把一張方形圖命名為 avatar.webp 放進 photos/ 即可。
+【後台設定(第一次用要先在 CF 儀表板點幾下)】
+去 Cloudflare 儀表板 → Workers & Pages → adom → Settings：
+1. R2：先在左側「R2」建一個 bucket(名字隨意) → 回 adom → Settings → Bindings → Add binding
+   → 選 R2 Bucket → Variable name 填「PHOTOS」(一定要這個名字) → 選剛建的 bucket
+2. KV：左側「Workers & Pages → KV」建一個 namespace(名字隨意) → 回 adom → Bindings → Add binding
+   → 選 KV Namespace → Variable name 填「SITE_KV」(一定要這個名字) → 選剛建的 namespace
+3. Settings → Variables and Secrets → Add：
+   - ADMIN_PASS = 你要設的後台密碼
+   - ADMIN_SECRET = 任意一長串亂碼(簽章用，不用記得住)
+4. 存檔，重新整理 /admin/ 即可登入
 
-【設定抖內收款地址(重要)】
-打開 index.html,找到最上面這兩行,換成阿東的收款資料:
-   var WALLET='TXXXX...';        ← 換成阿東的 USDT 收款地址
-   var NETWORK='USDT · TRC20 網路'; ← 網路標示(TRC20/ERC20…)
-QR 會自動依地址重新產生,不用另外做圖。
+沒做這幾步之前，網站本身完全正常(照舊顯示現有照片)，只是 /admin/ 的上傳/編輯功能會提示「尚未綁定」。
 
-【設定推廣連結(代理招募 + 預測站)】
-同樣在 index.html 最上面:
-   var AGENT_URL='https://ys89.bet/?proxy=d83wfg&utm_...'; ← 已填(代理碼 d83wfg),要換代理碼改這裡
-   var PREDICT_URL='https://ad-sportpage.pages.dev/?utm_...'; ← 已填(預測站廣告LP,免費7天VIP)
-相簿上方有兩顆大按鈕:「加入夜色代理・賺佣金」→ AGENT_URL、「免費領7天VIP報牌」→ PREDICT_URL。
-兩顆最終都導到夜色平台註冊(代理鈕直達、預測站鈕經LP→bot→領VIP→註冊)。
+【抖內三階(USDT，OxaPay 金流)】
+src/worker.js 最上面 DONATE_TIERS 常數可改金額/文案，目前：
+  應援 Bronze 5 USDT｜VIP Silver 15 USDT｜摯友 Gold 30 USDT
+index.html 裡也有一份一樣的 DONATE_TIERS(前端顯示用)，改的話兩邊要一起改。
 
-★ 建議:用一個「全新、獨立」的 USDT 錢包,不要跟預測站/ys89 共用同一個地址,
-  否則鏈上會被查出是同一夥(footprint),失去純粉絲站的意義。
+要讓「線上刷卡」真的能用，需要：
+1. 去 OxaPay 官網開一個「阿東專屬」商戶帳號(⚠️不要跟 picks168 共用同一組 key，
+   金流帳號共用等於鏈上/後台把阿東跟 ys89/預測站兜在一起，失去分開經營的意義)
+2. 拿到 merchant API key → CF adom → Settings → Variables and Secrets → Add
+   → OXAPAY_API_KEY = 你的 key
+3. 存檔即可，網站的「選一個等級開始」按鈕會自動改用真金流
+
+沒設定 OXAPAY_API_KEY 之前，抖內彈窗會顯示「線上刷卡尚未開通」，
+但下面「直接轉帳(彈性金額)」那組 QR/地址仍正常可用。
+
+抖內成功後會自動：
+- 帶回網站顯示感謝頁 + 對應福利(解鎖高清寫真 / 進私密頻道連結)
+- 如果有填暱稱，出現在首頁「感謝牆」
+
+【解鎖碼 / 私密頻道 / 收款地址】
+打開 index.html 最上面：
+   var WALLET='TXXXX...';           ← 阿東的 USDT 收款地址(彈性抖內QR用)
+   var UNLOCK_CODE='adong520';      ← 手動解鎖碼(私訊發，或抖內Bronze以上自動解鎖)
+   var VIP_CHANNEL_URL='...';       ← 私密 TG 頻道連結(高清照以上/影片放這，Silver+抖內後出現)
+   var AGENT_URL='...';             ← 夜色代理連結(已接代理碼 rs82gq)
+   var PREDICT_URL='...';           ← 預測站廣告LP(已接 KOL=adong 追蹤)
+
+★ WALLET 務必用「全新、獨立」的 USDT 錢包，OXAPAY_API_KEY 務必用「阿東專屬」商戶帳號，
+  不要跟預測站/ys89 共用 — 否則鏈上/後台紀錄會把兩邊兜在一起，失去分開經營的意義。
+
+【KOL 帶量怎麼看】
+阿東帶去預測站的人，在 picks168 後台「🎯 KOL 代碼」分頁看得到成效(代碼 adong)。
+夜色帶量另外看 ys89 代理後台的代理碼 rs82gq。
 
 【部署】
-整個資料夾(index.html + photos/ + photos.json)上傳到你的靜態空間即可
-(Cloudflare Pages Direct Upload / Netlify / GitHub Pages 都行)。
-建議用「阿東專屬」的帳號部署,跟 ys89/預測站分開。
-
-【現況】
-- 目前 photos/ 內是 3 張粉色佔位圖 + 1 張佔位大頭貼,換成真圖後刪掉即可。
-- WALLET 目前是佔位 TXXXX,務必換成真地址才能收款。
+git push 到 GitHub(adongwang97-cpu/adom)即可，CF 有連 Git 會自動重新部署。

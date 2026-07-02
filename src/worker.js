@@ -16,11 +16,23 @@
  *   POST /api/admin/section/delete  {k}
  *   POST /api/admin/section/order   {order:[k,...]}
  *   POST /api/admin/theme        {theme}
+ * 抖內（OxaPay，免商戶KYC，跟 picks168 同一套簽章邏輯）：
+ *   POST /api/donate/create      {tier, name} → 建發票，回 pay_url
+ *   POST /api/donate/webhook     OxaPay 付款完成回調（header HMAC 簽章）
+ *   GET  /api/donate/status      ?order=xxx → 感謝頁輪詢用
+ *   GET  /api/supporters         公開，感謝牆用（最近抖內暱稱，不含金額細節）
  * 其餘 → 靜態檔(env.ASSETS)
  */
 
 const COOKIE_NAME = 'admin_session';
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 天
+
+// ── 抖內三階：改這裡數字/文案即可，不用動邏輯 ──
+const DONATE_TIERS = {
+  bronze: { n: '應援 Bronze', usd: 5, perks: ['解鎖 🔒解鎖專區 全部高清寫真', '感謝牆掛名'] },
+  silver: { n: 'VIP Silver', usd: 15, perks: ['以上全部', '私密 TG 頻道（獨家影片・搶先看）'] },
+  gold: { n: '摯友 Gold', usd: 30, perks: ['以上全部', '每月 1 則阿東親自回覆', '感謝牆置頂金色標示'] },
+};
 const DEFAULT_SECTIONS = [
   { k: 'soccer', n: '世足賽系列', ic: 'i-bolt', d: '跟著世界盃一起瘋 —— 球場邊最亮的那個就是我，穿上球衣為我的主隊尖叫 ⚽' },
   { k: 'cafe', n: '下午茶系列', ic: 'i-cam', d: '沒有比賽的午後，一杯咖啡、一點慵懶 —— 這是只給你們看的悠閒時光 ☕' },
@@ -114,6 +126,33 @@ async function buildMerged(request, env) {
 
 function sanitizeKey(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24); }
 
+// ── OxaPay：與 picks168(functions/api/pay/_oxapay.js) 同一套 API 合約，
+//    但務必用「阿東自己的」商戶 key（env.OXAPAY_API_KEY），不可共用 picks168 那組（footprint 隔離）──
+const OXA_INVOICE_API = 'https://api.oxapay.com/v1/payment/invoice';
+async function oxaCreateInvoice(env, { amount, order_id, callbackUrl, returnUrl, description }) {
+  const res = await fetch(OXA_INVOICE_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', merchant_api_key: env.OXAPAY_API_KEY },
+    body: JSON.stringify({ amount: Number(amount), currency: 'USD', to_currency: 'USDT', lifetime: 60, callback_url: callbackUrl, return_url: returnUrl, order_id, description: description || '阿東抖內' }),
+  });
+  const data = await res.json().catch(() => ({}));
+  const body = data && data.data ? data.data : data;
+  return { ok: res.ok, pay_url: body && (body.payment_url || body.pay_link), track_id: body && body.track_id, raw: data };
+}
+async function oxaVerifySign(rawBody, headerSig, apiKey) {
+  try {
+    if (!headerSig || !apiKey) return false;
+    const key = await crypto.subtle.importKey('raw', enc.encode(apiKey), { name: 'HMAC', hash: 'SHA-512' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', key, enc.encode(rawBody));
+    const hex = [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+    return hex === String(headerSig).toLowerCase();
+  } catch { return false; }
+}
+const OXA_PAID = new Set(['Paid', 'paid']);
+
+async function kvGetJSON(env, key, def) { if (!env.SITE_KV) return def; try { const raw = await env.SITE_KV.get(key); return raw ? JSON.parse(raw) : def; } catch { return def; } }
+async function kvPutJSON(env, key, val) { if (env.SITE_KV) await env.SITE_KV.put(key, JSON.stringify(val)); }
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -134,6 +173,64 @@ export default {
         const obj = await env.PHOTOS.get(key);
         if (!obj) return new Response('not found', { status: 404 });
         return new Response(obj.body, { headers: { 'content-type': 'image/webp', 'cache-control': 'public, max-age=31536000, immutable' } });
+      }
+
+      // ── 公開：抖內三階 → 建 OxaPay 發票 ──
+      if (p === '/api/donate/create' && method === 'POST') {
+        if (!env.OXAPAY_API_KEY) return json({ error: 'gateway_not_configured', hint: '尚未設定 OXAPAY_API_KEY(阿東自己的商戶key，不可跟 picks168 共用)' }, 503);
+        const body = await request.json().catch(() => ({}));
+        const tierKey = sanitizeKey(body.tier);
+        const tier = DONATE_TIERS[tierKey];
+        if (!tier) return json({ error: 'bad_tier' }, 400);
+        const name = String(body.name || '').replace(/[<>]/g, '').slice(0, 24);
+        const order_id = `dn_${tierKey}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const origin = url.origin;
+        const inv = await oxaCreateInvoice(env, {
+          amount: tier.usd, order_id,
+          callbackUrl: `${origin}/api/donate/webhook`,
+          returnUrl: `${origin}/?paid=${order_id}`,
+          description: `阿東抖內・${tier.n}`,
+        });
+        if (!inv.ok || !inv.pay_url) return json({ error: 'invoice_failed', raw: inv.raw }, 502);
+        await kvPutJSON(env, `don:${order_id}`, { tier: tierKey, name, amount: tier.usd, status: 'pending', created_at: Date.now() });
+        return json({ ok: true, order_id, pay_url: inv.pay_url });
+      }
+
+      // ── 公開：OxaPay webhook（付款完成回調）──
+      if (p === '/api/donate/webhook' && method === 'POST') {
+        if (!env.OXAPAY_API_KEY) return new Response('not_configured', { status: 503 });
+        const raw = await request.text();
+        const sig = request.headers.get('HMAC') || request.headers.get('hmac');
+        if (!(await oxaVerifySign(raw, sig, env.OXAPAY_API_KEY))) return new Response('bad_sign', { status: 401 });
+        let data; try { data = JSON.parse(raw); } catch { return new Response('bad_json', { status: 400 }); }
+        const orderId = data.order_id || '';
+        if (orderId && OXA_PAID.has(data.status)) {
+          const rec = await kvGetJSON(env, `don:${orderId}`, null);
+          if (rec && rec.status !== 'paid') {
+            rec.status = 'paid'; rec.paid_at = Date.now();
+            await kvPutJSON(env, `don:${orderId}`, rec);
+            if (rec.name) {
+              const list = await kvGetJSON(env, 'supporters', []);
+              list.unshift({ name: rec.name, tier: rec.tier, ts: Date.now() });
+              await kvPutJSON(env, 'supporters', list.slice(0, 50));
+            }
+          }
+        }
+        return new Response('OK', { status: 200 });
+      }
+
+      // ── 公開：感謝頁輪詢付款狀態 ──
+      if (p === '/api/donate/status' && method === 'GET') {
+        const order = url.searchParams.get('order') || '';
+        const rec = await kvGetJSON(env, `don:${order}`, null);
+        if (!rec) return json({ status: 'unknown' });
+        return json({ status: rec.status, tier: rec.tier });
+      }
+
+      // ── 公開：感謝牆 ──
+      if (p === '/api/supporters' && method === 'GET') {
+        const list = await kvGetJSON(env, 'supporters', []);
+        return json({ list: list.slice(0, 20) });
       }
 
       // ── 後台：登入 ──

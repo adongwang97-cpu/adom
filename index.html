@@ -157,6 +157,26 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 .mbox h3{font-size:21px;font-weight:800;font-family:'Playfair Display','Noto Serif TC',serif}
 .mbox .heart{color:var(--rose);font-size:28px}
 .mbox p{color:var(--mut);font-size:13px;margin:8px 0 16px}
+.mbox.wide{max-width:460px}
+.tiers{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;text-align:left}
+.tier{border:1px solid var(--line);border-radius:14px;padding:13px 14px;cursor:pointer;transition:border-color .2s,background .2s}
+.tier:hover,.tier.sel{border-color:var(--gold);background:rgba(232,192,125,.08)}
+.tier-top{display:flex;justify-content:space-between;align-items:baseline}
+.tier-n{font-weight:800;font-size:14.5px}
+.tier-usd{font-family:'Playfair Display',serif;font-weight:800;color:var(--gold2);font-size:16px}
+.tier-perks{margin-top:5px;color:var(--mut);font-size:11.5px;line-height:1.7}
+.nameRow{margin-bottom:12px}
+.nameRow input{width:100%;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--tx);font-size:13px;text-align:center}
+.nameRow input::placeholder{color:var(--mut)}
+.payBtn{width:100%;background:linear-gradient(90deg,var(--rose),var(--gold));border:none;color:#2a0713;font-weight:800;border-radius:12px;padding:13px;cursor:pointer;font-size:15px;margin-bottom:14px}
+.payBtn:disabled{opacity:.5;cursor:not-allowed}
+.divider2{display:flex;align-items:center;gap:10px;color:var(--mut);font-size:11.5px;margin:6px 0 14px}
+.divider2::before,.divider2::after{content:"";flex:1;height:1px;background:var(--line)}
+.wall{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:14px}
+.wtag{font-size:11px;background:rgba(232,192,125,.1);border:1px solid var(--line);border-radius:20px;padding:4px 10px;color:var(--gold2)}
+.wtag.gold{background:rgba(232,192,125,.22);border-color:var(--gold);color:var(--gold2);font-weight:700}
+.thanksBox{position:fixed;inset:0;z-index:95;background:rgba(12,3,8,.96);display:none;align-items:center;justify-content:center;padding:20px}
+.thanksBox.on{display:flex}
 .qr{width:196px;height:196px;border-radius:14px;margin:0 auto 14px;background:#fff;padding:10px;display:block}
 .netlab{font-size:12px;font-weight:700;color:var(--gold2);margin-bottom:6px}
 .addr{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
@@ -183,6 +203,7 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 <symbol id="i-dice" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.3" fill="currentColor" stroke="none"/></symbol>
 <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
 <symbol id="i-arw" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
 </defs></svg>
 
 <div class="wrap">
@@ -253,15 +274,34 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 
 <!-- donate modal -->
 <div class="modal" id="modal">
-  <div class="mbox">
+  <div class="mbox wide">
     <button class="x" onclick="closeDonate()">✕</button>
     <div class="heart">♡</div>
     <h3>抖內支持阿東</h3>
-    <p>用 USDT 抖內，掃碼或複製地址即可 ♡</p>
+    <p>選一個等級，USDT 線上刷卡秒開通 ♡</p>
+    <div class="tiers" id="tierList"></div>
+    <div class="nameRow"><input type="text" id="donateName" placeholder="暱稱(感謝牆顯示，可留空)" maxlength="24"></div>
+    <button class="payBtn" id="payBtn" onclick="startDonate()">選一個等級開始</button>
+    <div id="donateMsg" class="dim" style="font-size:12px;color:var(--mut);margin:-6px 0 10px;min-height:16px"></div>
+
+    <div class="divider2">或直接轉帳(彈性金額)</div>
     <img class="qr" id="qr" src="" alt="USDT QR">
     <div class="netlab" id="netlab">USDT · TRC20 網路</div>
     <div class="addr"><code id="addr"></code><button class="copy" onclick="copyAddr()"><svg class="ic fill" style="width:13px;height:13px"><use href="#i-copy"/></svg> 複製</button></div>
     <div class="thx" id="thx">謝謝你的支持，我會繼續努力 ♡</div>
+
+    <div class="wall" id="wall"></div>
+  </div>
+</div>
+
+<!-- 抖內成功感謝頁(付款完成從金流返回時顯示) -->
+<div class="thanksBox" id="thanksBox">
+  <div class="mbox">
+    <button class="x" onclick="document.getElementById('thanksBox').classList.remove('on')">✕</button>
+    <div class="heart">♡</div>
+    <h3 id="thanksTitle">處理中…</h3>
+    <p id="thanksBody">正在確認你的付款，請稍候 ♡</p>
+    <div id="thanksActions"></div>
   </div>
 </div>
 
@@ -287,6 +327,67 @@ function openDonate(){document.getElementById('modal').classList.add('on');track
 function closeDonate(){document.getElementById('modal').classList.remove('on');}
 function copyAddr(){navigator.clipboard&&navigator.clipboard.writeText(WALLET);track('donate_copy');var t=document.getElementById('thx');t.textContent='✓ 地址已複製！謝謝你 ♡';setTimeout(function(){t.textContent='謝謝你的支持，我會繼續努力 ♡';},2200);}
 document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeDonate();});
+
+// ===== 抖內三階（跟 src/worker.js 的 DONATE_TIERS 對應，改文案/金額要兩邊一起改）=====
+var DONATE_TIERS={
+  bronze:{n:'應援 Bronze',usd:5,perks:['解鎖 🔒解鎖專區 全部高清寫真','感謝牆掛名']},
+  silver:{n:'VIP Silver',usd:15,perks:['以上全部','私密 TG 頻道（獨家影片・搶先看）']},
+  gold:{n:'摯友 Gold',usd:30,perks:['以上全部','每月 1 則阿東親自回覆','感謝牆置頂金色標示']},
+};
+var selectedTier=null;
+(function(){
+  var el=document.getElementById('tierList');
+  el.innerHTML=Object.keys(DONATE_TIERS).map(function(k){var t=DONATE_TIERS[k];
+    return '<div class="tier" data-k="'+k+'" onclick="selectTier(\''+k+'\')"><div class="tier-top"><span class="tier-n">'+t.n+'</span><span class="tier-usd">'+t.usd+' USDT</span></div><div class="tier-perks">'+t.perks.join(' · ')+'</div></div>';
+  }).join('');
+})();
+function selectTier(k){
+  selectedTier=k;
+  document.querySelectorAll('.tier').forEach(function(el){el.classList.toggle('sel',el.dataset.k===k);});
+  var btn=document.getElementById('payBtn');btn.disabled=false;btn.textContent='抖內 '+DONATE_TIERS[k].usd+' USDT・立即前往付款';
+}
+function startDonate(){
+  if(!selectedTier)return;
+  var msg=document.getElementById('donateMsg'),btn=document.getElementById('payBtn');
+  btn.disabled=true;msg.textContent='建立付款中…';track('donate_checkout_start',{tier:selectedTier});
+  fetch('/api/donate/create',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({tier:selectedTier,name:(document.getElementById('donateName').value||'').trim()})})
+    .then(function(r){return r.json();}).then(function(d){
+      if(d.ok&&d.pay_url){location.href=d.pay_url;}
+      else{btn.disabled=false;btn.textContent='選一個等級開始';msg.textContent=d.error==='gateway_not_configured'?'線上刷卡尚未開通，請用下方 USDT 地址直接轉帳 ♡':'建立付款失敗，請稍後再試';}
+    }).catch(function(){btn.disabled=false;msg.textContent='網路異常，請稍後再試';});
+}
+// ===== 感謝牆 =====
+fetch('/api/supporters').then(function(r){return r.json();}).then(function(d){
+  var list=(d&&d.list)||[];if(!list.length)return;
+  document.getElementById('wall').innerHTML=list.map(function(s){return '<span class="wtag'+(s.tier==='gold'?' gold':'')+'">'+(s.tier==='gold'?'★ ':'')+esc2(s.name||'匿名支持者')+'</span>';}).join('');
+}).catch(function(){});
+function esc2(s){return String(s).replace(/[<>&]/g,function(c){return{'<':'&lt;','>':'&gt;','&':'&amp;'}[c];});}
+
+// ===== 從金流付款返回：?paid=order_id → 輪詢確認 → 顯示感謝頁+福利 =====
+(function(){
+  var order=new URLSearchParams(location.search).get('paid');
+  if(!order)return;
+  document.getElementById('thanksBox').classList.add('on');
+  var tries=0;
+  (function poll(){
+    tries++;
+    fetch('/api/donate/status?order='+encodeURIComponent(order)).then(function(r){return r.json();}).then(function(d){
+      if(d.status==='paid'){showThanks(d.tier);}
+      else if(tries<20){setTimeout(poll,3000);}
+      else{document.getElementById('thanksTitle').textContent='確認中，請稍後查看';document.getElementById('thanksBody').textContent='付款可能還在鏈上確認，晚點重整這頁會自動顯示結果 ♡';}
+    }).catch(function(){if(tries<20)setTimeout(poll,3000);});
+  })();
+})();
+function showThanks(tierKey){
+  track('donate_success',{tier:tierKey});
+  var t=DONATE_TIERS[tierKey]||{n:'支持者',perks:[]};
+  document.getElementById('thanksTitle').textContent='謝謝你的支持！♡';
+  document.getElementById('thanksBody').innerHTML='你已是 <b style="color:var(--gold2)">'+t.n+'</b>，福利已解鎖：<br>'+t.perks.join('<br>');
+  var actions='<button class="payBtn" style="margin-top:6px" onclick="unlockFromDonate()"><svg class="ic"><use href="#i-lock"/></svg> 立即解鎖高清寫真</button>';
+  if(tierKey!=='bronze')actions+='<a class="payBtn" style="display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;background:linear-gradient(90deg,var(--rose),var(--berry));color:#fff" href="'+VIP_CHANNEL_URL+'" target="_blank" rel="noopener"><svg class="ic fill"><use href="#i-heart"/></svg> 進私密頻道 →</a>';
+  document.getElementById('thanksActions').innerHTML=actions;
+}
+function unlockFromDonate(){localStorage.setItem('adong_vault','1');document.getElementById('thanksBox').classList.remove('on');var v=document.getElementById('vault');if(v)v.scrollIntoView({behavior:'smooth'});if(typeof revealVault==='function')revealVault();}
 
 // ===== 漂浮花瓣 / 愛心 =====
 (function(){var fx=document.getElementById('fx');var roses=['#ff7a9c','#ffb2c4','#e8c07d','#f7e4bb'];for(var i=0;i<22;i++){var d=document.createElement('div');var heart=Math.random()<0.32;d.className='petal'+(heart?' h':'');var c=roses[i%roses.length];if(heart){d.textContent='♡';}else{var s=8+Math.random()*12;d.style.width=s+'px';d.style.height=s*1.1+'px';d.style.background='linear-gradient(145deg,'+c+',rgba(255,255,255,.2))';}d.style.left=(Math.random()*100)+'%';d.style.animationDuration=(9+Math.random()*10)+'s';d.style.animationDelay=(-Math.random()*18)+'s';d.style.opacity=(.3+Math.random()*.4);fx.appendChild(d);}})();
