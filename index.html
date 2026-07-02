@@ -176,6 +176,11 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 .wall{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:14px}
 .wtag{font-size:11px;background:rgba(232,192,125,.1);border:1px solid var(--line);border-radius:20px;padding:4px 10px;color:var(--gold2)}
 .wtag.gold{background:rgba(232,192,125,.22);border-color:var(--gold);color:var(--gold2);font-weight:700}
+.wall-home{margin:0 20px 30px;padding:22px 20px;border:1px solid var(--line);border-radius:16px;text-align:center}
+.wall-home h4{font-size:15px;color:var(--gold2);margin-bottom:4px}
+.wall-home p{font-size:12px;color:var(--mut);margin-bottom:14px}
+.wall-home .wtag{font-size:12px;padding:5px 12px}
+.wall-home.empty{display:none}
 .thanksBox{position:fixed;inset:0;z-index:95;background:rgba(12,3,8,.96);display:none;align-items:center;justify-content:center;padding:20px}
 .thanksBox.on{display:flex}
 .qr{width:196px;height:196px;border-radius:14px;margin:0 auto 14px;background:#fff;padding:10px;display:block}
@@ -259,6 +264,12 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
     </div>
   </div>
 
+  <div class="wall-home empty" id="wallHomeBox">
+    <h4>謝謝這些支持我的你 ♡</h4>
+    <p>每一份抖內都是我持續創作的動力</p>
+    <div class="wall" id="wallHome"></div>
+  </div>
+
   <div class="foot">
     <div class="sign">thank you ♡</div>
     謝謝每一個支持我的你，你的抖內是我持續創作的動力。
@@ -332,8 +343,8 @@ document.getElementById('modal').addEventListener('click',function(e){if(e.targe
 // ===== 抖內三階（跟 src/worker.js 的 DONATE_TIERS 對應，改文案/金額要兩邊一起改）=====
 var DONATE_TIERS={
   bronze:{n:'應援 Bronze',usd:5,perks:['解鎖 🔒解鎖專區 全部高清寫真','感謝牆掛名']},
-  silver:{n:'VIP Silver',usd:15,perks:['以上全部','私密 TG 頻道（獨家影片・搶先看）']},
-  gold:{n:'摯友 Gold',usd:30,perks:['以上全部','每月 1 則阿東親自回覆','感謝牆置頂金色標示']},
+  silver:{n:'VIP Silver',usd:15,perks:['以上全部']},
+  gold:{n:'摯友 Gold',usd:30,perks:['以上全部','感謝牆置頂金色標示']},
 };
 var selectedTier=null;
 (function(){
@@ -357,10 +368,13 @@ function startDonate(){
       else{btn.disabled=false;btn.textContent='選一個等級開始';msg.textContent=d.error==='gateway_not_configured'?'線上刷卡尚未開通，請用下方 USDT 地址直接轉帳 ♡':'建立付款失敗，請稍後再試';}
     }).catch(function(){btn.disabled=false;msg.textContent='網路異常，請稍後再試';});
 }
-// ===== 感謝牆 =====
+// ===== 感謝牆（同一份資料，一份精簡版放首頁最下方，一份完整版放抖內彈窗底部）=====
 fetch('/api/supporters').then(function(r){return r.json();}).then(function(d){
   var list=(d&&d.list)||[];if(!list.length)return;
-  document.getElementById('wall').innerHTML=list.map(function(s){return '<span class="wtag'+(s.tier==='gold'?' gold':'')+'">'+(s.tier==='gold'?'★ ':'')+esc2(s.name||'匿名支持者')+'</span>';}).join('');
+  var html=list.map(function(s){return '<span class="wtag'+(s.tier==='gold'?' gold':'')+'">'+(s.tier==='gold'?'★ ':'')+esc2(s.name||'匿名支持者')+'</span>';}).join('');
+  document.getElementById('wall').innerHTML=html;
+  document.getElementById('wallHome').innerHTML=html;
+  document.getElementById('wallHomeBox').classList.remove('empty');
 }).catch(function(){});
 function esc2(s){return String(s).replace(/[<>&]/g,function(c){return{'<':'&lt;','>':'&gt;','&':'&amp;'}[c];});}
 
